@@ -40,7 +40,7 @@ _RESOURCE: str = "https://app.api.surehub.io/api"
 _RESOURCES: dict = dict(
     auth=f"{_RESOURCE}/auth/login",
     device="{}{}".format(_RESOURCE, "/device/{flap_id}/status"),
-    household="{}{}".format(_RESOURCE, "/household{household_id}/position"),
+    household="{}{}".format(_RESOURCE, "/household/{household_id}/position"),
     pet="{}{}".format(_RESOURCE, "/pet/{pet_id}/position"),
     timeline="{}{}".format(_RESOURCE, "/timeline/household/{household_id}"),
 )
@@ -49,7 +49,7 @@ _RESOURCES: dict = dict(
 class SurePetcare:
     """Communication with the Sure Petcare API."""
 
-    def __init__(self, email, password, household_id, loop, session, debug=False):
+    def __init__(self, email, password, household_id, loop, session, auth_token=None, debug=False):
         """Initialize the connection to the Sure Petcare API."""
         self._loop = loop
         self._session = session
@@ -59,9 +59,10 @@ class SurePetcare:
         self.household_id = household_id
 
         self._device_id = self._generate_device_id()
-        self._auth_token = None
+        self._auth_token = auth_token
 
         self.flap_data = dict()
+        self.pet_data = dict()
 
         if debug:
             _LOGGER.setLevel(logging.DEBUG)
@@ -158,6 +159,63 @@ class SurePetcare:
                 self.flap_data[flap_id] = None
 
             return self.flap_data[flap_id]
+
+        except (asyncio.TimeoutError, aiohttp.ClientError):
+            _LOGGER.error(f"Can not load data from {device_resource}")
+            raise SurePetcareConnectionError()
+
+    async def get_pet_data(self, pet_id, second_try=False) -> dict:
+        """Retrieve the flap data/state."""
+        device_resource = _RESOURCES["pet"].format(pet_id=pet_id)
+
+        if pet_id not in self.pet_data:
+            self.pet_data[pet_id] = dict()
+
+        _LOGGER.debug(f"self._auth_token: {self._auth_token}")
+        if not self._auth_token:
+            await self._refresh_token()
+
+        try:
+            with async_timeout.timeout(5, loop=self._loop):
+                headers = self._generate_headers()
+                if ETAG in self.pet_data[pet_id]:
+                    headers[ETAG] = self.pet_data[pet_id][ETAG]
+                    _LOGGER.debug(f"using available {ETAG} in headers: {headers}")
+
+                _LOGGER.debug(f"headers: {headers}")
+
+                response: aiohttp.ClientResponse = await self._session.get(
+                    device_resource, headers=headers
+                )
+
+                _LOGGER.debug(f"\n\n response.status: {response.status}\n\n")
+
+            if response.status == 200:
+
+                self.pet_data[pet_id] = await response.json()
+
+                if ETAG in response.headers:
+                    self.pet_data[pet_id][ETAG] = response.headers[ETAG].strip('"')
+
+            elif response.status == 304:
+                # Etag header matched, no new data avaiable
+                pass
+
+            elif response.status == 401:
+                _LOGGER.debug(f"AuthenticationError! Retry: {second_try}: {response}")
+                self._auth_token = None
+                if not second_try:
+                    token_refreshed = await self._refresh_token()
+                    if token_refreshed:
+                        await self.get_pet_data(pet_id, second_try=True)
+
+                raise SurePetcareAuthenticationError()
+
+            else:
+                _LOGGER.debug(f"Response from {device_resource}: {response}")
+                self.pet_data[pet_id] = None
+
+            return self.pet_data[pet_id]
 
         except (asyncio.TimeoutError, aiohttp.ClientError):
             _LOGGER.error(f"Can not load data from {device_resource}")

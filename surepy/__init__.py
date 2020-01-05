@@ -43,7 +43,7 @@ _RESOURCES: dict = dict(
 class SurePetcare:
     """Communication with the Sure Petcare API."""
 
-    def __init__(self, email, password, household_id, loop, session, auth_token=None):
+    async def __init__(self, email, password, household_id, loop, session, auth_token=None):
         """Initialize the connection to the Sure Petcare API."""
         self._loop = loop
         self._session = session
@@ -53,7 +53,7 @@ class SurePetcare:
         self.household_id = household_id
 
         self._device_id = self._generate_device_id()
-        self._auth_token = auth_token or self._refresh_token()
+        self._auth_token = auth_token or await self._refresh_token()
 
         self.flap_data = dict()
         self.pet_data = dict()

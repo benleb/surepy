@@ -239,6 +239,44 @@ class SurePetcare:
         return str(mac_dec)[-10:]
 
 
+class SureProductID(IntEnum):
+    """Sure Petcare API Product IDs."""
+
+    ROUTER = 1  # Sure Hub
+    PET_FLAP = 3  # Pet Door Connect
+    CAT_FLAP = 6  # Cat Door Connect
+
+
+# Thanks to @rcastberg for discovering the IDs used by the Sure Petcare API."""
+class SureLocationID(IntEnum):
+    """Sure Petcare API Location IDs."""
+
+    INSIDE = 1
+    OUTSIDE = 2
+    UNKNOWN = -1
+
+
+class SureLockStateID(IntEnum):
+    """Sure Petcare API State IDs."""
+
+    UNLOCKED = 0
+    LOCKED_IN = 1
+    LOCKED_OUT = 2
+    LOCKED_ALL = 3
+    CURFEW = 4
+    CURFEW_LOCKED = -1
+    CURFEW_UNLOCKED = -2
+    CURFEW_UNKNOWN = -3
+
+
+class SureThingID(IntEnum):
+    """Sure Petcare thing Types."""
+
+    HUB = 0
+    FLAP = 1
+    PET = 2
+
+
 class SurePetcareError(Exception):
     """General Sure Petcare Error exception occurred."""
 

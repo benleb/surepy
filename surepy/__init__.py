@@ -26,13 +26,7 @@ REFERER = "Referer"
 USER_AGENT = "User-Agent"
 
 
-# get logger & configure basic log format
 _LOGGER = logging.getLogger(__name__)
-logging.basicConfig(
-    format="%(asctime)s | [%(name)s] - %(levelname)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-_LOGGER.setLevel(logging.WARNING)
 
 
 _USER_AGENT = "Mozilla/5.0 (Linux; Android 7.0; SM-G930F Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/64.0.3282.137 Mobile Safari/537.36"
@@ -49,7 +43,7 @@ _RESOURCES: dict = dict(
 class SurePetcare:
     """Communication with the Sure Petcare API."""
 
-    def __init__(self, email, password, household_id, loop, session, auth_token=None, debug=False):
+    def __init__(self, email, password, household_id, loop, session, auth_token=None):
         """Initialize the connection to the Sure Petcare API."""
         self._loop = loop
         self._session = session
@@ -64,9 +58,7 @@ class SurePetcare:
         self.flap_data = dict()
         self.pet_data = dict()
 
-        if debug:
-            _LOGGER.setLevel(logging.DEBUG)
-            _LOGGER.debug(f"initialization completed | vars(): {vars()}")
+        _LOGGER.debug(f"initialization completed | vars(): {vars()}")
 
     async def _refresh_token(self) -> str:
         """Get or refresh the authentication token."""

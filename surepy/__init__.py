@@ -53,7 +53,7 @@ class SurePetcare:
         self.household_id = household_id
 
         self._device_id = self._generate_device_id()
-        self._auth_token = auth_token
+        self._auth_token = auth_token or self._refresh_token()
 
         self.flap_data = dict()
         self.pet_data = dict()

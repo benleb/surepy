@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='surepy',
-      version='0.1.5',
+      version='0.1.6',
       license='MIT',
       url='http://github.com/benleb/surepy',
       author='Ben Lebherz',

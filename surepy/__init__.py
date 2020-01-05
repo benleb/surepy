@@ -43,7 +43,7 @@ _RESOURCES: dict = dict(
 class SurePetcare:
     """Communication with the Sure Petcare API."""
 
-    async def __init__(self, email, password, household_id, loop, session, auth_token=None):
+    def __init__(self, email, password, household_id, loop, session, auth_token=None):
         """Initialize the connection to the Sure Petcare API."""
         self._loop = loop
         self._session = session
@@ -53,14 +53,14 @@ class SurePetcare:
         self.household_id = household_id
 
         self._device_id = self._generate_device_id()
-        self._auth_token = auth_token or await self._refresh_token()
+        self._auth_token = auth_token
 
         self.flap_data = dict()
         self.pet_data = dict()
 
         _LOGGER.debug(f"initialization completed | vars(): {vars()}")
 
-    async def _refresh_token(self) -> str:
+    async def refresh_token(self) -> str:
         """Get or refresh the authentication token."""
         authentication_data = dict(
             email_address=self.email, password=self.password, device_id=self._device_id
@@ -108,7 +108,7 @@ class SurePetcare:
 
         _LOGGER.debug(f"self._auth_token: {self._auth_token}")
         if not self._auth_token:
-            await self._refresh_token()
+            await self.refresh_token()
 
         try:
             with async_timeout.timeout(5, loop=self._loop):
@@ -140,7 +140,7 @@ class SurePetcare:
                 _LOGGER.debug(f"AuthenticationError! Retry: {second_try}: {response}")
                 self._auth_token = None
                 if not second_try:
-                    token_refreshed = await self._refresh_token()
+                    token_refreshed = await self.refresh_token()
                     if token_refreshed:
                         await self.get_flap_data(flap_id, second_try=True)
 
@@ -165,7 +165,7 @@ class SurePetcare:
 
         _LOGGER.debug(f"self._auth_token: {self._auth_token}")
         if not self._auth_token:
-            await self._refresh_token()
+            await self.refresh_token()
 
         try:
             with async_timeout.timeout(5, loop=self._loop):
@@ -197,7 +197,7 @@ class SurePetcare:
                 _LOGGER.debug(f"AuthenticationError! Retry: {second_try}: {response}")
                 self._auth_token = None
                 if not second_try:
-                    token_refreshed = await self._refresh_token()
+                    token_refreshed = await self.refresh_token()
                     if token_refreshed:
                         await self.get_pet_data(pet_id, second_try=True)
 

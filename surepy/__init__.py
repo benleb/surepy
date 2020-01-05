@@ -9,6 +9,8 @@ import asyncio
 import logging
 import random
 
+from enum import IntEnum
+
 import aiohttp
 import async_timeout
 

@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='surepy',
-      version='0.1.10',
+      # version='0.1.10',
       license='MIT',
       url='http://github.com/benleb/surepy',
       author='Ben Lebherz',
@@ -14,6 +14,11 @@ setup(name='surepy',
       packages=['surepy'],
       zip_safe=False,
       platforms='any',
+      setup_requires=["setuptools_scm"],
+      use_scm_version={
+          "version_scheme": "python-simplified-semver",
+          "local_scheme": lambda v: "",
+      },
       install_requires=list(val.strip() for val in open('requirements.txt')),
       classifiers=[
           'Intended Audience :: Developers',

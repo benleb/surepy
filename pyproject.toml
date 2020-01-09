@@ -2,12 +2,10 @@
 name = "surepy"
 version = "0.1.10"
 description = "Library to interact with the flaps & doors from Sure Petcare."
-authors = [
-    "Ben Lebherz <git@benleb.de>"
-]
+authors = ["Ben Lebherz <git@benleb.de>"]
 license = "MIT"
 readme = "README.md"
-python = "^3.7"
+python = "^3.8"
 homepage = "https://github.com/benleb/surepy"
 repository = "https://github.com/benleb/surepy"
 documentation = "https://github.com/benleb/surepy"
@@ -20,25 +18,29 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-# Requirements
 [dependencies]
+aiohttp = "^3.6.2"
+async_timeout = "^3.0.8"
 
 [dev-dependencies]
 
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=42", "wheel", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
+[tools.setuptools_scm]
+version_scheme = "python-simplified-semver"
+local_scheme = 'lambda v: ""'
 
 [tool.black]
 line-length = 88
-target_version = ["py37"]
+target_version = ["py38"]
 include = '\.pyi?$'
 exclude = '''
-
 (
   /(
       \.eggs         # exclude a few common directories in the

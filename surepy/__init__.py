@@ -80,6 +80,18 @@ class SurePetcare:
         return (await self.devices).get(device_id)
 
     @property
+    async def feeders(self) -> Mapping[int, Any]:
+        feeders = {}
+        for device in (await self.devices).values():
+            if device["product_id"] in [SureProductID.FEEDER]:
+                feeders[device["id"]] = device
+
+        return feeders
+
+    async def feeder(self, feeder_id: int) -> Optional[Mapping[int, Any]]:
+        return (await self.feeders).get(feeder_id)
+
+    @property
     async def flaps(self) -> Mapping[int, Any]:
         flaps = {}
         for device in (await self.devices).values():
@@ -246,8 +258,10 @@ class SurePetcare:
 class SureProductID(IntEnum):
     """Sure Petcare API Product IDs."""
 
+    PET = 0  # This ID is artificial and not from Sure Petcare
     ROUTER = 1  # Sure Hub
     PET_FLAP = 3  # Pet Door Connect
+    FEEDER = 4  # Feeder Connect
     CAT_FLAP = 6  # Cat Door Connect
 
 
@@ -273,12 +287,12 @@ class SureLockStateID(IntEnum):
     CURFEW_UNKNOWN = -3
 
 
-class SureThingID(IntEnum):
-    """Sure Petcare thing Types."""
+# class SureThingID(IntEnum):
+#     """Sure Petcare thing Types."""
 
-    HUB = 0
-    FLAP = 1
-    PET = 2
+#     HUB = 0
+#     FLAP = 1
+#     PET = 2
 
 
 class SurePetcareError(Exception):

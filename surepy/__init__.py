@@ -53,7 +53,6 @@ class SurePetcare:
         self,
         email: str,
         password: str,
-        household_id: int,
         loop: asyncio.AbstractEventLoop,
         session: aiohttp.ClientSession,
         auth_token: Optional[str] = None,
@@ -64,7 +63,6 @@ class SurePetcare:
 
         self.email = email
         self.password = password
-        self.household_id = household_id
 
         self._device_id = self._generate_device_id()
         self._auth_token: Optional[str] = auth_token
@@ -82,10 +80,34 @@ class SurePetcare:
         return (await self.devices).get(device_id)
 
     @property
+    async def flaps(self) -> Mapping[int, Any]:
+        flaps = {}
+        for device in (await self.devices).values():
+            if device["product_id"] in [SureProductID.CAT_FLAP, SureProductID.PET_FLAP]:
+                flaps[device["id"]] = device
+
+        return flaps
+
+    async def flap(self, flap_id: int) -> Optional[Mapping[int, Any]]:
+        return (await self.flaps).get(flap_id)
+
+    @property
+    async def hubs(self) -> Mapping[int, Any]:
+        hubs = {}
+        for device in (await self.devices).values():
+            if device["product_id"] == SureProductID.ROUTER:
+                hubs[device["id"]] = device
+
+        return hubs
+
+    async def hub(self, hub_id: int) -> Optional[Mapping[int, Any]]:
+        return (await self.flaps).get(hub_id)
+
+    @property
     async def pets(self) -> Mapping[int, Any]:
         return await self.get_entities("pets")
 
-    async def pet(self, pet_id: int) -> Optional[Mapping[str, Any]]:
+    async def pet(self, pet_id: int) -> Optional[Mapping[int, Any]]:
         return (await self.pets).get(pet_id)
 
     async def get_entities(self, sure_type: str) -> Mapping[int, Any]:

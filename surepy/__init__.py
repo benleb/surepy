@@ -107,7 +107,7 @@ class SurePetcare:
     async def hubs(self) -> Mapping[int, Any]:
         hubs = {}
         for device in (await self.devices).values():
-            if device["product_id"] == SureProductID.ROUTER:
+            if device["product_id"] == SureProductID.HUB:
                 hubs[device["id"]] = device
 
         return hubs
@@ -259,7 +259,7 @@ class SureProductID(IntEnum):
     """Sure Petcare API Product IDs."""
 
     PET = 0  # This ID is artificial and not from Sure Petcare
-    ROUTER = 1  # Sure Hub
+    HUB = 1  # Sure Hub
     PET_FLAP = 3  # Pet Door Connect
     FEEDER = 4  # Feeder Connect
     CAT_FLAP = 6  # Cat Door Connect
@@ -285,14 +285,6 @@ class SureLockStateID(IntEnum):
     CURFEW_LOCKED = -1
     CURFEW_UNLOCKED = -2
     CURFEW_UNKNOWN = -3
-
-
-# class SureThingID(IntEnum):
-#     """Sure Petcare thing Types."""
-
-#     HUB = 0
-#     FLAP = 1
-#     PET = 2
 
 
 class SurePetcareError(Exception):

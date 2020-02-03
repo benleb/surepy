@@ -1,2 +1,2 @@
-aiohttp
-async_timeout
+aiohttp>=3.6.2
+async_timeout>=3.0.8

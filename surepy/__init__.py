@@ -194,7 +194,7 @@ class SurePetcare:
         )
 
         try:
-            with async_timeout.timeout(5, loop=self._loop):
+            with async_timeout.timeout(10, loop=self._loop):
                 raw_response: aiohttp.ClientResponse = await self._session.post(
                     AUTH_RESOURCE,
                     data=authentication_data,
@@ -223,7 +223,10 @@ class SurePetcare:
 
             return self._auth_token
 
-        except (asyncio.TimeoutError, aiohttp.ClientError, AttributeError) as error:
+        except asyncio.TimeoutError as error:
+            _LOGGER.debug("Timeout while calling %s: %s", AUTH_RESOURCE, error)
+            raise SurePetcareConnectionError()
+        except (aiohttp.ClientError, AttributeError) as error:
             _LOGGER.debug("Failed to fetch %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareError()
 

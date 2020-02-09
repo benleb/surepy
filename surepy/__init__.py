@@ -28,6 +28,8 @@ BASE_RESOURCE: str = "https://app.api.surehub.io/api"
 AUTH_RESOURCE: str = f"{BASE_RESOURCE}/auth/login"
 DATA_RESOURCE: str = f"{BASE_RESOURCE}/me/start"
 
+API_TIMEOUT = 10
+
 # HTTP constants
 ACCEPT = "Accept"
 ACCEPT_ENCODING = "Accept-Encoding"
@@ -164,7 +166,7 @@ class SurePetcare:
                     self._etag = response.headers[ETAG].strip('"')
 
             elif response.status == 304:
-                # Etag header matched, no new data avaiable
+                # Etag header matched, no new data available
                 pass
 
             elif response.status == 401:
@@ -194,7 +196,7 @@ class SurePetcare:
         )
 
         try:
-            with async_timeout.timeout(10, loop=self._loop):
+            with async_timeout.timeout(API_TIMEOUT, loop=self._loop):
                 raw_response: aiohttp.ClientResponse = await self._session.post(
                     AUTH_RESOURCE,
                     data=authentication_data,
@@ -209,7 +211,7 @@ class SurePetcare:
                     self._auth_token = response["data"]["token"]
 
             elif raw_response.status == 304:
-                # Etag header matched, no new data avaiable
+                # Etag header matched, no new data available
                 pass
 
             elif raw_response.status == 401:

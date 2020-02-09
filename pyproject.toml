@@ -1,6 +1,6 @@
 [project]
 name = "surepy"
-version = "0.2.2"
+version = "0.2.3"
 description = "Library to interact with the flaps & doors from Sure Petcare."
 authors = ["Ben Lebherz <git@benleb.de>"]
 license = "MIT"

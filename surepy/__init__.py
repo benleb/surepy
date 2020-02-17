@@ -10,7 +10,7 @@ import logging
 import random
 
 from enum import IntEnum
-from typing import Any, Dict, Optional, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 import aiohttp
 import async_timeout
@@ -55,13 +55,13 @@ class SurePetcare:
         self,
         email: str,
         password: str,
-        loop: asyncio.AbstractEventLoop,
-        session: aiohttp.ClientSession,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        session: Optional[aiohttp.ClientSession] = None,
         auth_token: Optional[str] = None,
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
-        self._loop = loop
-        self._session = session
+        self._loop = loop or asyncio.get_event_loop()
+        self._session = session or aiohttp.ClientSession()
 
         self.email = email
         self.password = password
@@ -143,7 +143,7 @@ class SurePetcare:
             await self._refresh_token()
 
         try:
-            with async_timeout.timeout(5, loop=self._loop):
+            with async_timeout.timeout(API_TIMEOUT, loop=self._loop):
                 headers = self._generate_headers()
                 if self._etag:
                     headers[ETAG] = self._etag

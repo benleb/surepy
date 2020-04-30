@@ -58,6 +58,7 @@ class SurePetcare:
         loop: Optional[asyncio.AbstractEventLoop] = None,
         session: Optional[aiohttp.ClientSession] = None,
         auth_token: Optional[str] = None,
+        api_timeout: Optional[int] = API_TIMEOUT,
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
         self._loop = loop or asyncio.get_event_loop()
@@ -66,6 +67,7 @@ class SurePetcare:
         self.email = email
         self.password = password
 
+        self._api_timeout = api_timeout
         self._device_id = self._generate_device_id()
         self._auth_token: Optional[str] = auth_token
         self._etag = None
@@ -143,7 +145,7 @@ class SurePetcare:
             await self._refresh_token()
 
         try:
-            with async_timeout.timeout(API_TIMEOUT, loop=self._loop):
+            with async_timeout.timeout(self._api_timeout, loop=self._loop):
                 headers = self._generate_headers()
                 if self._etag:
                     headers[ETAG] = self._etag
@@ -196,7 +198,7 @@ class SurePetcare:
         )
 
         try:
-            with async_timeout.timeout(API_TIMEOUT, loop=self._loop):
+            with async_timeout.timeout(self._api_timeout, loop=self._loop):
                 raw_response: aiohttp.ClientResponse = await self._session.post(
                     AUTH_RESOURCE,
                     data=authentication_data,

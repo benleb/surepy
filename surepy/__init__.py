@@ -256,7 +256,7 @@ class SurePetcare:
             for i in range(0, 12, 2)
         )
 
-        mac_dec = int(random_bytes.replace(":", "").replace("-", ""), 16)
+        mac_dec = int(random_bytes.replace(":", "").replace("-", "").replace(" ", "0"), 16)
 
         # use low order bits because upper two octets are low entropy
         return str(mac_dec)[-10:]

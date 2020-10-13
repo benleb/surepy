@@ -2,8 +2,10 @@
 surepy
 
 MIT License
-Copyright (c) 2018 Benjamin Lebherz <git@benleb.de>
+Copyright (c) 2018 Ben Lebherz <git@benleb.de>
 """
+
+from importlib.metadata import version
 
 import asyncio
 import logging
@@ -16,11 +18,13 @@ import aiohttp
 import async_timeout
 
 
+__version__ = version(__name__)
+
 # User-Agent string
 _USER_AGENT = (
-    f"Mozilla/5.0 (Linux; Android 7.0; SM-G930F Build/NRD90M; wv) "
-    f"AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 "
-    f"Chrome/64.0.3282.137 Mobile Safari/537.36"
+    "Mozilla/5.0 (Linux; Android 7.0; SM-G930F Build/NRD90M; wv) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 "
+    "Chrome/64.0.3282.137 Mobile Safari/537.36"
 )
 
 # Sure Petcare API endpoints
@@ -75,6 +79,10 @@ class SurePetcare:
         self.data: Optional[Dict[str, Any]] = dict()
 
         _LOGGER.debug("initialization completed | vars(): %s", vars())
+
+    @property
+    def auth_token(self) -> Optional[str]:
+        return self._auth_token
 
     @property
     async def devices(self) -> Mapping[int, Any]:
@@ -153,9 +161,7 @@ class SurePetcare:
 
                 _LOGGER.debug("headers: %s", headers)
 
-                response: aiohttp.ClientResponse = await self._session.get(
-                    DATA_RESOURCE, headers=headers
-                )
+                response: aiohttp.ClientResponse = await self._session.get(DATA_RESOURCE, headers=headers)
 
                 _LOGGER.debug("response.status: %d", response.status)
 
@@ -193,9 +199,7 @@ class SurePetcare:
 
     async def _refresh_token(self) -> Optional[str]:
         """Get or refresh the authentication token."""
-        authentication_data = dict(
-            email_address=self.email, password=self.password, device_id=self._device_id
-        )
+        authentication_data = dict(email_address=self.email, password=self.password, device_id=self._device_id)
 
         try:
             with async_timeout.timeout(self._api_timeout, loop=self._loop):
@@ -251,10 +255,7 @@ class SurePetcare:
     @staticmethod
     def _generate_device_id() -> str:
         """Generate a "unique" client device ID based on MAC address."""
-        random_bytes = ":".join(
-            ("%12x" % random.randint(0, 0xFFFFFFFFFFFF))[i : i + 2]
-            for i in range(0, 12, 2)
-        )
+        random_bytes = ":".join(("%12x" % random.randint(0, 0xFFFFFFFFFFFF))[i : i + 2] for i in range(0, 12, 2))
 
         mac_dec = int(random_bytes.replace(":", "").replace("-", "").replace(" ", "0"), 16)
 

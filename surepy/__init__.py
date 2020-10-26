@@ -1,8 +1,9 @@
 """
 surepy
+====================================
+The core module of surepy
 
-MIT License
-Copyright (c) 2018 Ben Lebherz <git@benleb.de>
+|license-info|
 """
 
 import asyncio
@@ -10,21 +11,24 @@ import logging
 
 from enum import IntEnum
 from importlib.metadata import version
+from logging import Logger
 from os import environ
-from typing import Any, Dict, Mapping, Optional, Union
-from uuid import UUID, uuid4
+from pathlib import Path
+from typing import Any, Dict, Optional
+from uuid import uuid1
 
 import aiohttp
 import async_timeout
+import requests
 
 
 __version__ = version(__name__)
 
 # User-Agent string
 _USER_AGENT = (
-    "Mozilla/5.0 (Linux; Android 7.0; SM-G930F Build/NRD90M; wv) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 "
-    "Chrome/64.0.3282.137 Mobile Safari/537.36"
+    "Mozilla/7.0 (Linux; Android 9.0; SX-G730F Build/NRD90M; wv) "
+    "AppleWebKit/637.36 (KHTML, like Gecko) Version/4.0 "
+    "Chrome/84.0.3282.137 Mobile Safari/637.36"
 )
 
 # Sure Petcare API endpoints
@@ -33,10 +37,9 @@ AUTH_RESOURCE: str = f"{BASE_RESOURCE}/auth/login"
 MESTART_RESOURCE: str = f"{BASE_RESOURCE}/me/start"
 TIMELINE_RESOURCE: str = f"{BASE_RESOURCE}/timeline"
 NOTIFICATION_RESOURCE: str = f"{BASE_RESOURCE}/notification"
-
 CONTROL_RESOURCE: str = "{BASE_RESOURCE}/device/{device_id}/control"
 
-API_TIMEOUT = 10
+API_TIMEOUT = 15
 
 # HTTP constants
 ACCEPT = "Accept"
@@ -47,26 +50,18 @@ CONNECTION = "Connection"
 CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_TEXT_PLAIN = "text/plain"
 ETAG = "Etag"
+HOST = "Host"
 HTTP_HEADER_X_REQUESTED_WITH = "X-Requested-With"
 ORIGIN = "Origin"
 REFERER = "Referer"
 USER_AGENT = "User-Agent"
 
-ENV_SUREPY_TOKEN = "SUREPY_TOKEN"
+TOKEN_ENV = "SUREPY_TOKEN"
+TOKEN_FILE = Path("~/.surepy.token").expanduser()
+
 
 # get a logger
-_LOGGER = logging.getLogger(__name__)
-
-_LOGGER.setLevel(logging.DEBUG)
-
-
-def hl(text: Union[int, float, str]) -> str:
-    return f"\033[1m{text}\033[0m"
-
-
-def hl_entity(entity: str) -> str:
-    domain, entity = entity.split(".")
-    return f"{domain}.{hl(entity)}"
+logger: Logger = logging.getLogger(__name__)
 
 
 def natural_time(duration: int) -> str:
@@ -86,6 +81,37 @@ def natural_time(duration: int) -> str:
         natural = f"{int(duration_sec)}sec"
 
     return natural
+
+
+def token_seems_valid(token: str) -> bool:
+    """check validity of an api token based on its characters and length
+
+    Args:
+        token (str): sure petcare api token
+
+    Returns:
+        bool: True if ``token`` seems valid
+    """
+    return (token is not None) and token.isascii() and token.isprintable() and (320 < len(token) < 448)
+
+
+def find_token() -> Optional[str]:
+
+    token: Optional[str] = None
+
+    # check env token
+    if (env_token := environ.get(TOKEN_ENV, None)) and token_seems_valid(token=env_token):
+        token = env_token
+
+    # check file token
+    elif (
+        TOKEN_FILE.exists()
+        and (file_token := TOKEN_FILE.read_text(encoding="utf-8"))
+        and token_seems_valid(token=file_token)
+    ):
+        token = file_token
+
+    return token
 
 
 class SureLockStateID(IntEnum):
@@ -115,26 +141,43 @@ class SurePetcare:
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
         self._loop = loop or asyncio.get_event_loop()
-        self._session = session or aiohttp.ClientSession()
+        self._session = session or aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False))
+        # self._session = session or aiohttp.ClientSession()
 
+        # sure petcare credentials
         self.email = email
         self.password = password
+        # random device id
+        self._device_id: str = str(uuid1())
 
+        # connection settings
         self._api_timeout: int = api_timeout
-        self._device_id: UUID = uuid4()
-        self._auth_token: Optional[str] = auth_token if auth_token else environ.get(ENV_SUREPY_TOKEN)
 
+        # api token management
+        self._auth_token: Optional[str] = None
+        if auth_token and token_seems_valid(auth_token):
+            self._auth_token = auth_token
+        else:  # if token := find_token():
+            self._auth_token = find_token()
+        # elif token := await self._get_token():
+        #     self._auth_token = token
+        # else:
+        #     # no valid credentials/token
+        #     SurePetcareAuthenticationError("sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯")
+
+        # storage for received api data
         self._resource: Dict[str, Any] = {}
+        # storage for etags
         self._etags: Dict[str, str] = {}
 
-        _LOGGER.debug("initialization completed | vars(): %s", vars())
+        logger.debug("initialization completed | vars(): %s", vars())
 
     @property
     def auth_token(self) -> Optional[str]:
         return self._auth_token
 
     @property
-    async def devices(self) -> Mapping[int, Dict[str, Any]]:
+    async def devices(self) -> Dict[int, Dict[str, Any]]:
         return await self.get_entities("devices")
 
     async def device(self, device_id: int) -> Dict[str, Any]:
@@ -142,34 +185,28 @@ class SurePetcare:
         return device if device else {}
 
     @property
-    async def feeders(self) -> Mapping[int, Any]:
-        feeders = {}
-        for device in (await self.devices).values():
-            if device["product_id"] in [SureProductID.FEEDER]:
-                feeders[device["id"]] = device
+    async def feeders(self) -> Dict[int, Any]:
+        return {dev["id"]: dev for dev in (await self.devices).values() if dev["product_id"] in [SurepyProduct.FEEDER]}
 
-        return feeders
-
-    async def feeder(self, feeder_id: int) -> Optional[Mapping[int, Any]]:
+    async def feeder(self, feeder_id: int) -> Optional[Dict[int, Any]]:
         return (await self.feeders).get(feeder_id)
 
     @property
-    async def flaps(self) -> Mapping[int, Any]:
-        flaps = {}
-        for device in (await self.devices).values():
-            if device["product_id"] in [SureProductID.CAT_FLAP, SureProductID.PET_FLAP]:
-                flaps[device["id"]] = device
+    async def flaps(self) -> Dict[int, Any]:
+        return {
+            dev["id"]: dev
+            for dev in (await self.devices).values()
+            if dev["product_id"] in [SurepyProduct.CAT_FLAP, SurepyProduct.PET_FLAP]
+        }
 
-        return flaps
-
-    async def flap(self, flap_id: int) -> Optional[Mapping[int, Any]]:
+    async def flap(self, flap_id: int) -> Optional[Dict[int, Any]]:
         return (await self.flaps).get(flap_id)
 
     @property
-    async def hubs(self) -> Mapping[int, Any]:
+    async def hubs(self) -> Dict[int, Any]:
         hubs = {}
         for device in (await self.devices).values():
-            if device["product_id"] == SureProductID.HUB:
+            if device["product_id"] == SurepyProduct.HUB:
                 hubs[device["id"]] = device
 
         return hubs
@@ -178,25 +215,11 @@ class SurePetcare:
         return (await self.flaps).get(hub_id, {})
 
     @property
-    async def pets(self) -> Mapping[int, Any]:
+    async def pets(self) -> Dict[int, Any]:
         return await self.get_entities("pets")
 
     async def pet(self, pet_id: int) -> Dict[str, Any]:
         return (await self.pets).get(pet_id, {})
-
-    async def get_entities(self, sure_type: str) -> Dict[int, Any]:
-
-        if MESTART_RESOURCE not in self._resource:
-            self._resource[MESTART_RESOURCE] = (await self._get_resource(resource=MESTART_RESOURCE)).get("data")
-
-        entities: Dict[int, Any] = {}
-
-        if MESTART_RESOURCE in self._resource and (data := self._resource[MESTART_RESOURCE].get(sure_type)):
-
-            for entity in data:
-                entities[entity["id"]] = entity
-
-        return entities
 
     async def get_timeline(self, second_try: bool = False) -> Dict[str, Any]:
         """Retrieve the flap data/state."""
@@ -205,10 +228,6 @@ class SurePetcare:
     async def get_notification(self, second_try: bool = False) -> Dict[str, Any]:
         """Retrieve the flap data/state."""
         return await self._get_resource(resource=NOTIFICATION_RESOURCE, timeout=API_TIMEOUT * 2)
-
-    async def get_pet_report(self, pet_id: int, household_id: int, second_try: bool = False) -> Dict[str, Any]:
-        """Retrieve the flap data/state."""
-        return await self._get_resource(resource=f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}")
 
     async def get_report(
         self, household_id: int, pet_id: Optional[int] = None, second_try: bool = False
@@ -219,14 +238,28 @@ class SurePetcare:
         else:
             return await self._get_resource(resource=f"{BASE_RESOURCE}/report/household/{household_id}")
 
+    async def get_entities(self, sure_type: str, refresh: bool = False) -> Dict[int, Any]:
+
+        if MESTART_RESOURCE not in self._resource or refresh:
+            await self._get_resource(resource=MESTART_RESOURCE)
+
+        entities: Dict[int, Any] = {}
+
+        if data := self._resource[MESTART_RESOURCE].get("data", {}).get(sure_type):
+
+            for entity in data:
+                entities[entity["id"]] = entity
+
+        return entities
+
     async def _get_resource(
         self, resource: str, timeout: int = API_TIMEOUT, second_try: bool = False, **kwargs: Any
     ) -> Dict[str, Any]:
         """Retrieve the flap data/state."""
 
-        _LOGGER.debug("self._auth_token: %s", self._auth_token)
+        logger.debug("self._auth_token: %s", self._auth_token)
         if not self._auth_token:
-            await self._refresh_token()
+            self.get_token()
 
         data: Dict[str, Any] = {}
 
@@ -237,14 +270,14 @@ class SurePetcare:
                 # use etag if available
                 if resource in self._etags:
                     headers[ETAG] = str(self._etags.get(resource))
-                    _LOGGER.debug("using available etag '%s' in headers: %s", ETAG, headers)
+                    logger.info("using available etag '%s' in headers: %s", ETAG, headers)
 
-                _LOGGER.debug("headers: %s", headers)
+                logger.debug("headers: %s", headers)
 
                 await self._session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await self._session.get(resource, headers=headers, timeout=timeout)
 
-                _LOGGER.debug("response.status: %d", response.status)
+                logger.debug("response.status: %d", response.status)
 
             if response.status == 200:
 
@@ -258,23 +291,23 @@ class SurePetcare:
                 pass
 
             elif response.status == 401:
-                _LOGGER.debug("AuthenticationError! Try: %s: %s", second_try, response)
+                logger.debug("AuthenticationError! Try: %s: %s", second_try, response)
                 self._auth_token = None
                 if not second_try:
-                    token_refreshed = await self._refresh_token()
+                    token_refreshed = self.get_token()
                     if token_refreshed:
                         await self._get_resource(resource=resource, second_try=True)
 
                 raise SurePetcareAuthenticationError()
 
             else:
-                _LOGGER.info("Response from %s:\n%s", resource, response)
+                logger.info("Response from %s:\n%s", resource, response)
                 self._resource[resource] = {}
 
             return data
 
         except (asyncio.TimeoutError, aiohttp.ClientError):
-            _LOGGER.error("Can not load data from %s", resource)
+            logger.error("Can not load data from %s", resource)
             raise SurePetcareConnectionError()
 
     async def lock(self, device_id: int) -> Optional[Dict[str, Any]]:
@@ -310,9 +343,10 @@ class SurePetcare:
     ) -> Optional[Dict[str, Any]]:
         """Retrieve the flap data/state."""
 
-        _LOGGER.debug("self._auth_token: %s", self._auth_token)
+        logger.debug("self._auth_token: %s", self._auth_token)
         if not self._auth_token:
-            await self._refresh_token()
+            # await self._refresh_token()
+            self._auth_token = self.get_token()
 
         response_data: Dict[str, Any] = {}
 
@@ -323,14 +357,14 @@ class SurePetcare:
                 # use etag if available
                 if resource in self._etags:
                     headers[ETAG] = str(self._etags.get(resource))
-                    _LOGGER.debug("using available etag '%s' in headers: %s", ETAG, headers)
+                    logger.debug("using available etag '%s' in headers: %s", ETAG, headers)
 
-                _LOGGER.debug("headers: %s", headers)
+                logger.debug("headers: %s", headers)
 
                 await self._session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await self._session.put(resource, headers=headers, data=data)
 
-                _LOGGER.debug("response.status: %d", response.status)
+                logger.debug("response.status: %d", response.status)
 
             if response.status == 200:
 
@@ -346,69 +380,73 @@ class SurePetcare:
                 pass
 
             elif response.status == 401:
-                _LOGGER.debug("AuthenticationError! Try: %s: %s", second_try, response)
+                logger.debug("AuthenticationError! Try: %s: %s", second_try, response)
                 self._auth_token = None
                 if not second_try:
-                    token_refreshed = await self._refresh_token()
+                    token_refreshed = self.get_token()
                     if token_refreshed:
                         await self._get_resource(resource=resource, second_try=True)
 
                 raise SurePetcareAuthenticationError()
 
             else:
-                _LOGGER.info("Response from %s:\n%s", resource, response)
-                # self.data = None
+                logger.info("Response from %s:\n%s", resource, response)
 
             return response_data
 
         except (asyncio.TimeoutError, aiohttp.ClientError):
-            _LOGGER.error("Can not load data from %s", resource)
+            logger.error("Can not load data from %s", resource)
             raise SurePetcareConnectionError()
 
-    async def _refresh_token(self) -> Optional[str]:
+    def get_token(self) -> Optional[str]:
         """Get or refresh the authentication token."""
-        authentication_data = dict(email_address=self.email, password=self.password, device_id=self._device_id)
+        authentication_data: Dict[str, Optional[str]] = dict(
+            email_address=self.email, password=self.password, device_id=self._device_id
+        )
+
+        token: Optional[str] = None
 
         try:
-            with async_timeout.timeout(self._api_timeout, loop=self._loop):
-                raw_response: aiohttp.ClientResponse = await self._session.post(
-                    AUTH_RESOURCE,
-                    data=authentication_data,
-                    headers=self._generate_headers(),
-                )
+            raw_response: requests.Response = requests.post(
+                url=AUTH_RESOURCE, data=authentication_data, headers=self._generate_headers()
+            )
 
-            if raw_response.status == 200:
+            if raw_response.status_code == 200:
 
-                response: Dict[str, Any] = await raw_response.json()
+                response: Dict[str, Any] = raw_response.json()
 
                 if "data" in response and "token" in response["data"]:
-                    self._auth_token = response["data"]["token"]
+                    token = self._auth_token = response["data"]["token"]
 
-            elif raw_response.status == 304:
+            elif raw_response.status_code == 304:
                 # Etag header matched, no new data available
                 pass
 
-            elif raw_response.status == 401:
+            elif raw_response.status_code == 401:
                 self._auth_token = None
                 raise SurePetcareAuthenticationError()
 
             else:
-                _LOGGER.debug("Response from %s: %s", AUTH_RESOURCE, raw_response)
-                self._auth_token = None
+                logger.debug("Response from %s: %s", AUTH_RESOURCE, raw_response)
                 raise SurePetcareError()
 
-            return self._auth_token
+            return token
 
         except asyncio.TimeoutError as error:
-            _LOGGER.debug("Timeout while calling %s: %s", AUTH_RESOURCE, error)
+            logger.debug("Timeout while calling %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareConnectionError()
         except (aiohttp.ClientError, AttributeError) as error:
-            _LOGGER.debug("Failed to fetch %s: %s", AUTH_RESOURCE, error)
+            logger.debug("Failed to fetch %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareError()
+
+    async def close_session(self) -> None:
+        """close the aiohttp.ClientSession (without exposing self._session)"""
+        await self._session.close()
 
     def _generate_headers(self) -> Dict[str, str]:
         """Build a HTTP header accepted by the API"""
         return {
+            HOST: "app.api.surehub.io",
             CONNECTION: "keep-alive",
             ACCEPT: f"{CONTENT_TYPE_JSON}, {CONTENT_TYPE_TEXT_PLAIN}, */*",
             ORIGIN: "https://surepetcare.io",
@@ -418,21 +456,22 @@ class SurePetcare:
             ACCEPT_LANGUAGE: "en-US,en-GB;q=0.9",
             HTTP_HEADER_X_REQUESTED_WITH: "com.sureflap.surepetcare",
             AUTHORIZATION: f"Bearer {self._auth_token}",
-            # "X-Device-Id": str(uuid.uuid4())
+            "X-Device-Id": self._device_id,
         }
 
 
-class SureProductID(IntEnum):
+class SurepyProduct(IntEnum):
     """Sure Petcare API Product IDs."""
 
-    PET = 0  # This ID is artificial and not from Sure Petcare
-    HUB = 1  # Sure Hub
+    PET = 0  # artificial ID, not used by the Sure Petcare API
+    HUB = 1  # Hub
+    REPEATER = 2  # Repeater
     PET_FLAP = 3  # Pet Door Connect
-    FEEDER = 4  # Feeder Connect
-    CAT_FLAP = 6  # Cat Door Connect
+    FEEDER = 4  # Microchip Pet Feeder Connect
+    PROGRAMMER = 5  # Programmer
+    CAT_FLAP = 6  # Cat Flap Connect
 
 
-# Thanks to @rcastberg for discovering the IDs used by the Sure Petcare API."""
 class SureLocationID(IntEnum):
     """Sure Petcare API Location IDs."""
 

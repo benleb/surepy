@@ -1,2 +1,6 @@
-aiohttp>=3.6.2
-async_timeout>=3.0.1
+aiohttp[speedups]==3.*,>=3.6.3
+async-timeout==3.*,>=3.0.1
+colorama==0.*,>=0.4.4
+halo==0.*,>=0.0.30
+requests==2.*,>=2.24.0
+rich==9.*,>=9.1.0

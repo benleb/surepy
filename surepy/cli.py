@@ -1,33 +1,39 @@
-#!/usr/bin/env python3
+"""
+surepy.cli
+====================================
+The cli module of surepy
+
+|license-info|
+"""
 
 import asyncio
 
 from datetime import datetime
 from functools import wraps
-from os import environ
 from pathlib import Path
+from shutil import copyfile
+from sys import exit
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Set
 
 import click
 
 from halo import Halo
-from rich import box, print
+from rich import box  # , print
 from rich.console import Console
 from rich.table import Table
 
 from . import (
-    ENV_SUREPY_TOKEN,
+    TOKEN_ENV,
     SureLocationID,
     SurePetcare,
-    SurePetcareAuthenticationError,
-    SureProductID,
+    SurepyProduct,
     __name__ as sp_name,
     __version__ as sp_version,
     natural_time,
 )
 
 
-def coro(f: Callable) -> Callable:  # type: ignore
+def coro(f: Any) -> Any:
     @wraps(f)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         return asyncio.run(f(*args, **kwargs))
@@ -35,50 +41,21 @@ def coro(f: Callable) -> Callable:  # type: ignore
     return wrapper
 
 
-surepy_token_file = Path("~/.surepy.token").expanduser()
+token_file = Path("~/.surepy.token").expanduser()
+old_token_file = token_file.with_suffix(".old_token")
 
 console = Console(width=100)
 
+CONTEXT_SETTINGS: Dict[str, Any] = dict(help_option_names=["--help"])
 
-CONTEXT_SETTINGS = dict(help_option_names=["--help"])
-
-version_message = (
-    f" 🐾 [#ffffff][bold]{sp_name}[/bold] [#ff1d5e]·[/] [#666666]v[#aaaaaa]{sp_version}"
-    # f" 🐾 [#ffffff][bold]{sp_name}[/bold] [#ff1d5e]·[/] {sp_version.replace('.', '[#ff1d5e].[/]')}"
-    # f"[#ff1d5e link=https://github.com/benleb/surepy]github.com/benleb/surepy[/]"
-    # f"[link=https://twitter.com/ben_leb]@ben_leb[/link][/]"
-)
+version_message = f" [#ffffff]{sp_name}[/] 🐾 [#666666]v[#aaaaaa]{sp_version.replace('.', '[#ff1d5e].[/]')}"
 
 
 def print_header() -> None:
+    """print header to terminal"""
     print()
     console.print(version_message, justify="left")
     print()
-
-
-def find_token(token: Optional[str]) -> Optional[str]:
-    def seems_valid(token: str) -> bool:
-        return token is not None and token.isascii() and token.isprintable() and (320 < len(token) < 384)
-
-    # check parameter token
-    if token and seems_valid(token=token):
-        return token
-
-    # check env token
-    elif (env_token := environ.get(ENV_SUREPY_TOKEN, None)) and seems_valid(token=env_token):
-        return env_token
-
-    # check file token
-    elif (
-        surepy_token_file.exists()
-        and (file_token := surepy_token_file.read_text(encoding="utf-8"))
-        and seems_valid(token=file_token)
-    ):
-        return file_token
-
-    else:
-        print(" 🐾 wtf?! [bold]¯\\_(ツ)_/¯[/]")
-        raise SurePetcareAuthenticationError
 
 
 def token_available(ctx: click.Context) -> Optional[str]:
@@ -87,10 +64,20 @@ def token_available(ctx: click.Context) -> Optional[str]:
 
     console.print("\n  [red bold]no token found![/]\n  checked in:\n")
     console.print("    · [bold]--token[/]")
-    console.print(f"    · [bold]{ENV_SUREPY_TOKEN}[/] env var")
-    console.print(f"    · [white bold]{surepy_token_file}[/]")
+    console.print(f"    · [bold]{TOKEN_ENV}[/] env var")
+    console.print(f"    · [white bold]{token_file}[/]")
     console.print("\n\n  sorry 🐾 [bold]¯\\_(ツ)_/¯[/]\n\n")
     return None
+
+
+async def json_response(data: Dict[Any, Any], ctx: click.Context, sp: Optional[SurePetcare] = None) -> None:
+    if ctx.obj.get("json", False):
+        if sp:
+            await sp.close_session()
+
+        console.print(data)
+
+        exit(0)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
@@ -98,19 +85,22 @@ def token_available(ctx: click.Context) -> Optional[str]:
 @click.option("--version", default=False, is_flag=True, help=f"show {sp_name} version")
 # @click.option("-v", "--verbose", default=False, is_flag=True, help="enable additional output")
 # @click.option("-d", "--debug", default=False, is_flag=True, help="enable debug output")
-@click.option("-t", "--token", "user_token", required=False, type=str, help="sure petcare api token", hide_input=True)
-def cli(ctx: click.Context, user_token: str, version: bool, verbose: bool, debug: bool) -> None:
+@click.option("-j", "--json", default=False, is_flag=True, help="enable json api response output")
+@click.option("-t", "--token", "user_token", default=None, type=str, help="api token", hide_input=True)
+def cli(ctx: click.Context, json: bool, user_token: str, version: bool) -> None:
     """surepy cli 🐾
 
     https://github.com/benleb/surepy
     """
 
-    print_header()
-
     ctx.ensure_object(dict)
-    ctx.obj["verbose"] = verbose
-    ctx.obj["debug"] = debug
-    ctx.obj["token"] = find_token(user_token)
+    # ctx.obj["verbose"] = verbose
+    # ctx.obj["debug"] = debug
+    ctx.obj["json"] = json
+    ctx.obj["token"] = user_token
+
+    if not json:
+        print_header()
 
     if not ctx.invoked_subcommand:
 
@@ -134,18 +124,19 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
     with Halo(text="fetching token", spinner="dots", color="magenta") as spinner:
         sp = SurePetcare(email=user, password=password)
 
-        if not sp._auth_token:
-            token = await sp._refresh_token()
-            await sp._session.close()
+        if token := sp.get_token():
 
-        # spinner.succeed(f"{sp._auth_token}")
-        spinner.succeed("token received!")
+            spinner.succeed("token received!")
 
-    if not surepy_token_file.exists() and token:
-        surepy_token_file.write_text(token, encoding="utf-8")
+            if token_file.exists() and token != token_file.read_text(encoding="utf-8"):
+                copyfile(token_file, old_token_file)
+
+            token_file.write_text(token, encoding="utf-8")
+
+        await sp.close_session()
 
     console.rule(f"[bold]{user}[/] [#ff1d5e]·[/] [bold]Token[/]", style="#ff1d5e")
-    console.print(f"[bold]{sp._auth_token}[/]", soft_wrap=True)
+    console.print(f"[bold]{token}[/]", soft_wrap=True)
     console.rule(style="#ff1d5e")
     print()
 
@@ -157,53 +148,54 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
 async def pets(ctx: click.Context, token: Optional[str]) -> None:
     """get pets"""
 
-    if token := ctx.obj.get("token", find_token(token)):
+    token = token if token else ctx.obj.get("token", None)
 
-        sp = SurePetcare(auth_token=str(token))
-        pets = await sp.pets
+    sp = SurePetcare(auth_token=token)
+    pets = await sp.pets
+    await sp.close_session()
 
-        table = Table(box=box.MINIMAL)
-        table.add_column("Name 🐾", style="bold")
-        table.add_column("Where 🥾", justify="right")
-        table.add_column("🍽  ⚖️  a", justify="right", style="bold")
-        table.add_column("🍽  ⚖️  b", justify="right", style="bold")
-        table.add_column("🍽  lunched time", justify="right")
-        table.add_column("ID 👤 ", justify="right")
-        table.add_column("Household 🏡", justify="right")
+    await json_response(pets, ctx)
 
-        sorted_pets = sorted(pets, key=lambda x: int(pets[x]["household_id"]))
+    table = Table(box=box.MINIMAL)
+    table.add_column("Name", style="bold")
+    table.add_column("Where", justify="right")
+    table.add_column("Change A", justify="right", style="bold")
+    table.add_column("Change B", justify="right", style="bold")
+    table.add_column("Lunched", justify="right")
+    table.add_column("ID 👤 ", justify="right")
+    table.add_column("Household 🏡", justify="right")
 
-        for pet_id in sorted_pets:
-            pet: Dict[str, Any] = pets[pet_id]
+    sorted_pets = sorted(pets, key=lambda x: int(pets[x]["household_id"]))
 
-            where = (
-                "unknown"
-                if "position" not in pet or "where" not in pet["position"]
-                else SureLocationID(pet["position"]["where"]).name.capitalize()
-            )
+    for pet_id in sorted_pets:
+        pet: Dict[str, Any] = pets[pet_id]
 
-            if (status := pet.get("status")) and (feeding := status.get("feeding")):
-                change_a, change_b = feeding["change"]
-                change_a = f"{change_a}g"
-                change_b = f"{change_b}g"
-                ate_at = feeding["at"]
-                lunch_time = str(datetime.fromisoformat(ate_at).strftime("%d/%m %H:%M"))
-            else:
-                change_a = change_b = lunch_time = ""
+        where = (
+            "unknown"
+            if "position" not in pet or "where" not in pet["position"]
+            else SureLocationID(pet["position"]["where"]).name.capitalize()
+        )
 
-            table.add_row(
-                str(pet["name"]),
-                str(where),
-                f"{change_a}",
-                f"{change_b}",
-                str(lunch_time),
-                str(pet["id"]),
-                str(pet["household_id"]),
-            )
+        if (status := pet.get("status")) and (feeding := status.get("feeding")):
+            change_a, change_b = feeding["change"]
+            change_a = f"{change_a}g"
+            change_b = f"{change_b}g"
+            ate_at = feeding["at"]
+            lunch_time = str(datetime.fromisoformat(ate_at).strftime("%d/%m %H:%M"))
+        else:
+            change_a = change_b = lunch_time = ""
 
-        console.print(table, "", sep="\n")
+        table.add_row(
+            str(pet["name"]),
+            str(where),
+            f"{change_a}",
+            f"{change_b}",
+            str(lunch_time),
+            str(pet["id"]),
+            str(pet["household_id"]),
+        )
 
-        await sp._session.close()
+    console.print(table, "", sep="\n")
 
 
 @cli.command()
@@ -213,33 +205,34 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
 async def devices(ctx: click.Context, token: Optional[str]) -> None:
     """get devices"""
 
-    if token := ctx.obj.get("token", find_token(token)):
+    token = token if token else ctx.obj.get("token", None)
 
-        sp = SurePetcare(auth_token=str(token))
-        devices = await sp.devices
+    sp = SurePetcare(auth_token=str(token))
+    devices = await sp.devices
+    await sp.close_session()
 
-        table = Table(title="[bold][#ff1d5e]·[/] Devices [#ff1d5e]·[/]", box=box.MINIMAL)
-        table.add_column("ID", justify="right", style="")
-        table.add_column("Household", justify="right", style="")
-        table.add_column("Type", style="")
-        table.add_column("Name", style="bold")
-        table.add_column("Serial", justify="right", style="")
+    await json_response(devices, ctx)
 
-        sorted_devices = sorted(devices, key=lambda x: int(devices[x]["household_id"]))
+    table = Table(title="[bold][#ff1d5e]·[/] Devices [#ff1d5e]·[/]", box=box.MINIMAL)
+    table.add_column("ID", justify="right", style="")
+    table.add_column("Household", justify="right", style="")
+    table.add_column("Type", style="")
+    table.add_column("Name", style="bold")
+    table.add_column("Serial", justify="right", style="")
 
-        for device_id in sorted_devices:
-            device: Dict[str, Any] = devices[device_id]
-            table.add_row(
-                str(device["id"]),
-                str(device["household_id"]),
-                str(SureProductID(device["product_id"]).name.replace("_", " ").title()),
-                str(device.get("name", "unknown")),
-                str(device.get("serial_number", "-")),
-            )
+    sorted_devices = sorted(devices, key=lambda x: int(devices[x]["household_id"]))
 
-        console.print(table, "", sep="\n")
+    for device_id in sorted_devices:
+        device: Dict[str, Any] = devices[device_id]
+        table.add_row(
+            str(device["id"]),
+            str(device["household_id"]),
+            str(SurepyProduct(device["product_id"]).name.replace("_", " ").title()),
+            str(device.get("name", "unknown")),
+            str(device.get("serial_number", "-")),
+        )
 
-        await sp._session.close()
+    console.print(table, "", sep="\n")
 
 
 @cli.command()
@@ -253,40 +246,43 @@ async def report(
 ) -> None:
     """get pet/household report"""
 
-    if token := ctx.obj.get("token", find_token(token)):
+    token = token if token else ctx.obj.get("token", None)
 
-        sp = SurePetcare(auth_token=str(token))
+    sp = SurePetcare(auth_token=str(token))
 
-        if data := (await sp.get_report(pet_id=pet_id, household_id=household_id)).get("data"):
+    json_data = await sp.get_report(pet_id=pet_id, household_id=household_id)
 
-            table = Table(box=box.MINIMAL)
+    await json_response(json_data, ctx, sp=sp)
 
-            all_keys: List[str] = ["pet", "from", "to", "duration", "entry_device_id", "exit_device_id"]
+    if data := json_data.get("data"):
 
-            for key in all_keys:
-                table.add_column(str(key))
+        table = Table(box=box.MINIMAL)
 
-            for pet in data:
+        all_keys: List[str] = ["pet", "from", "to", "duration", "entry_device_id", "exit_device_id"]
 
-                if (movement := pet["movement"]) and (datapoints := movement["datapoints"]):
+        for key in all_keys:
+            table.add_column(str(key))
 
-                    for datapoint in datapoints[-25:]:
+        for pet in data:
 
-                        if "active" in datapoint:
-                            continue
+            if (movement := pet["movement"]) and (datapoints := movement["datapoints"]):
 
-                        table.add_row(
-                            str((await sp.pet(pet["pet_id"])).get("name")),
-                            str(str(datetime.fromisoformat(datapoint["from"]).strftime("%d/%m %H:%M"))),
-                            str(str(datetime.fromisoformat(datapoint["to"]).strftime("%d/%m %H:%M"))),
-                            str(natural_time(datapoint["duration"])),
-                            str((await sp.device(datapoint["entry_device_id"])).get("name")),
-                            str((await sp.device(datapoint["exit_device_id"])).get("name")),
-                        )
+                for datapoint in datapoints[-25:]:
 
-            console.print(table, "", sep="\n")
+                    if "active" in datapoint:
+                        continue
 
-        await sp._session.close()
+                    table.add_row(
+                        str((await sp.pet(pet["pet_id"])).get("name")),
+                        str(str(datetime.fromisoformat(datapoint["from"]).strftime("%d/%m %H:%M"))),
+                        str(str(datetime.fromisoformat(datapoint["to"]).strftime("%d/%m %H:%M"))),
+                        str(natural_time(datapoint["duration"])),
+                        str((await sp.device(datapoint["entry_device_id"])).get("name")),
+                        str((await sp.device(datapoint["exit_device_id"])).get("name")),
+                    )
+
+        console.print(table, "", sep="\n")
+    await sp.close_session()
 
 
 @cli.command()
@@ -296,26 +292,30 @@ async def report(
 async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
     """get notifications"""
 
-    if token := ctx.obj.get("token", find_token(token)):
+    # if token := ctx.obj.get("token", find_token(token)):
+    token = token if token else ctx.obj.get("token", None)
 
-        sp = SurePetcare(auth_token=str(token))
+    sp = SurePetcare(auth_token=str(token))
 
-        if data := (await sp.get_notification()).get("data"):
+    json_data = await sp.get_notification()
+    await sp.close_session()
 
-            table = Table(box=box.MINIMAL)
+    await json_response(json_data, ctx)
 
-            all_keys: Set[str] = set()
-            all_keys.update(*[entry.keys() for entry in data])
+    if data := json_data.get("data"):
 
-            for key in all_keys:
-                table.add_column(str(key))
+        table = Table(box=box.MINIMAL)
 
-            for entry in data:
-                table.add_row(*([str(e) for e in entry.values()]))
+        all_keys: Set[str] = set()
+        all_keys.update(*[entry.keys() for entry in data])
 
-            console.print(table, "", sep="\n")
+        for key in all_keys:
+            table.add_column(str(key))
 
-        await sp._session.close()
+        for entry in data:
+            table.add_row(*([str(e) for e in entry.values()]))
+
+        console.print(table, "", sep="\n")
 
 
 @cli.command()
@@ -327,36 +327,36 @@ async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
 async def locking(ctx: click.Context, device_id: int, mode: str, token: Optional[str] = None) -> None:
     """lock control"""
 
-    if token := ctx.obj.get("token", find_token(token)):
+    token = token if token else ctx.obj.get("token", None)
 
-        sp = SurePetcare(auth_token=str(token))
+    sp = SurePetcare(auth_token=str(token))
 
-        lock_control: Optional[Callable[..., Coroutine[Any, Any, Any]]] = None
+    lock_control: Optional[Callable[..., Coroutine[Any, Any, Any]]] = None
 
-        if mode == "lock":
-            lock_control = sp.lock
-            state = "locked"
-        elif mode == "in":
-            lock_control = sp.lock_in
-            state = "locked in"
-        elif mode == "out":
-            lock_control = sp.lock_out
-            state = "locked out"
-        elif mode == "unlock":
-            lock_control = sp.unlock
-            state = "unlocked"
+    if mode == "lock":
+        lock_control = sp.lock
+        state = "locked"
+    elif mode == "in":
+        lock_control = sp.lock_in
+        state = "locked in"
+    elif mode == "out":
+        lock_control = sp.lock_out
+        state = "locked out"
+    elif mode == "unlock":
+        lock_control = sp.unlock
+        state = "unlocked"
+    else:
+        return
+
+    with Halo(text=f"setting to '{state}'", spinner="dots", color="red") as spinner:
+
+        if await lock_control(device_id=device_id) and (device := await sp.device(device_id=device_id)):
+            spinner.succeed(f"{device.get('name')} set to '{state}' 🐾")
         else:
-            return
+            spinner.fail(f"setting to '{state}' probably worked but something else is fishy...!")
 
-        with Halo(text=f"setting to '{state}'", spinner="dots", color="red") as spinner:
-
-            if await lock_control(device_id=device_id) and (device := await sp.device(device_id=device_id)):
-                spinner.succeed(f"{device.get('name')} set to '{state}' 🐾")
-            else:
-                spinner.fail(f"setting to '{state}' probably worked but something else is fishy...!")
-
-        await sp._session.close()
-        print()
+    await sp.close_session()
+    print()
 
 
 if __name__ == "__main__":

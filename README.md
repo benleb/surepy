@@ -38,5 +38,5 @@ surepy --help
 
 ## Thanks
 
-* @rcastberg for hist previous work on the Sure Petcare API ([github.com/rcastberg/sure_petcare](https://github.com/rcastberg/sure_petcare))
+* @rcastberg for hist previous work on the [Sure Petcare](https://www.surepetcare.com) API ([github.com/rcastberg/sure_petcare](https://github.com/rcastberg/sure_petcare))
 * @wei for the  header image generator ([github.com/wei/socialify](https://github.com/wei/socialify))

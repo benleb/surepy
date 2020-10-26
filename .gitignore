@@ -102,7 +102,3 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-docs/conf.py
-docs/index.rst
-docs/make.bat
-docs/Makefile

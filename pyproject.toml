@@ -28,7 +28,7 @@ python = "==3.*,>=3.8.0"
 aiohttp = {extras = ["speedups"], version = "^3.6.3"}
 async-timeout = "^3.0.1"
 colorama = "^0.4.4"
-rich = "^8.0.0"
+rich = ">=8,<10"
 halo = "^0.0.30"
 
 [tool.poetry.dev-dependencies]

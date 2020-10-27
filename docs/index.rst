@@ -15,7 +15,7 @@ Welcome to surepy's docs 🐾
    :caption: Contents:
 
 
-.. |license-info| replace:: https://github.com/benleb/surepy 🐾 MIT License · Ben Lebherz <git@benleb.de>
+.. |license-info| replace:: https://github.com/benleb/surepy 🐾 MIT License · Ben Lebherz
 
 
 Indices and tables

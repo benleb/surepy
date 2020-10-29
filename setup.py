@@ -21,7 +21,7 @@ if os.path.exists(readme_path):
 setup(
     long_description=readme,
     name='surepy',
-    version='0.4.0-beta.3',
+    version='0.4.0',
     description='Library to interact with the flaps & doors from Sure Petcare.',
     python_requires='==3.*,>=3.8.0',
     project_urls={
@@ -52,8 +52,8 @@ setup(
     package_data={"surepy": ["*.typed"]},
     install_requires=[
         'aiohttp[speedups]==3.*,>=3.6.3', 'async-timeout==3.*,>=3.0.1',
-        'colorama==0.*,>=0.4.4', 'halo==0.*,>=0.0.30', 'requests==2.*,>=2.24.0',
-        'rich==9.*,>=9.1.0'
+        'click==7.*,>=7.1.2', 'colorama==0.*,>=0.4.4', 'halo==0.*,>=0.0.30',
+        'requests==2.*,>=2.24.0', 'rich==9.*,>=9.1.0'
     ],
     extras_require={
         "dev": [

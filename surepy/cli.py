@@ -21,12 +21,13 @@ from halo import Halo
 from rich import box  # , print
 from rich.console import Console
 from rich.table import Table
+from surepy.entities import SurepyDevice
+from surepy.flap import Flap
+from surepy.pet import Pet
 
 from . import (
     TOKEN_ENV,
-    SureLocationID,
     SurePetcare,
-    SurepyProduct,
     __name__ as sp_name,
     __version__ as sp_version,
     natural_time,
@@ -48,7 +49,9 @@ console = Console(width=100)
 
 CONTEXT_SETTINGS: Dict[str, Any] = dict(help_option_names=["--help"])
 
-version_message = f" [#ffffff]{sp_name}[/] 🐾 [#666666]v[#aaaaaa]{sp_version.replace('.', '[#ff1d5e].[/]')}"
+version_message = (
+    f" [#ffffff]{sp_name}[/] 🐾 [#666666]v[#aaaaaa]{sp_version.replace('.', '[#ff1d5e].[/]')}"
+)
 
 
 def print_header() -> None:
@@ -70,10 +73,12 @@ def token_available(ctx: click.Context) -> Optional[str]:
     return None
 
 
-async def json_response(data: Dict[Any, Any], ctx: click.Context, sp: Optional[SurePetcare] = None) -> None:
+async def json_response(
+    data: Dict[Any, Any], ctx: click.Context, sp: Optional[SurePetcare] = None
+) -> None:
     if ctx.obj.get("json", False):
         if sp:
-            await sp.close_session()
+            await sp.sac.close_session()
 
         console.print(data)
 
@@ -86,7 +91,9 @@ async def json_response(data: Dict[Any, Any], ctx: click.Context, sp: Optional[S
 # @click.option("-v", "--verbose", default=False, is_flag=True, help="enable additional output")
 # @click.option("-d", "--debug", default=False, is_flag=True, help="enable debug output")
 @click.option("-j", "--json", default=False, is_flag=True, help="enable json api response output")
-@click.option("-t", "--token", "user_token", default=None, type=str, help="api token", hide_input=True)
+@click.option(
+    "-t", "--token", "user_token", default=None, type=str, help="api token", hide_input=True
+)
 def cli(ctx: click.Context, json: bool, user_token: str, version: bool) -> None:
     """surepy cli 🐾
 
@@ -99,8 +106,8 @@ def cli(ctx: click.Context, json: bool, user_token: str, version: bool) -> None:
     ctx.obj["json"] = json
     ctx.obj["token"] = user_token
 
-    if not json:
-        print_header()
+    # if not json:
+    #     print_header()
 
     if not ctx.invoked_subcommand:
 
@@ -113,8 +120,17 @@ def cli(ctx: click.Context, json: bool, user_token: str, version: bool) -> None:
 
 @cli.command()
 @click.pass_context
-@click.option("-u", "--user", required=True, type=str, help="sure petcare api account username (email)")
-@click.option("-p", "--password", required=True, type=str, help="sure petcare api account password", hide_input=True)
+@click.option(
+    "-u", "--user", required=True, type=str, help="sure petcare api account username (email)"
+)
+@click.option(
+    "-p",
+    "--password",
+    required=True,
+    type=str,
+    help="sure petcare api account password",
+    hide_input=True,
+)
 @coro
 async def token(ctx: click.Context, user: str, password: str) -> None:
     """get a token"""
@@ -124,7 +140,7 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
     with Halo(text="fetching token", spinner="dots", color="magenta") as spinner:
         sp = SurePetcare(email=user, password=password)
 
-        if token := sp.get_token():
+        if token := sp.sac.get_token():
 
             spinner.succeed("token received!")
 
@@ -133,7 +149,7 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
 
             token_file.write_text(token, encoding="utf-8")
 
-        await sp.close_session()
+        await sp.sac.close_session()
 
     console.rule(f"[bold]{user}[/] [#ff1d5e]·[/] [bold]Token[/]", style="#ff1d5e")
     console.print(f"[bold]{token}[/]", soft_wrap=True)
@@ -143,7 +159,9 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
 
 @cli.command()
 @click.pass_context
-@click.option("-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
 @coro
 async def pets(ctx: click.Context, token: Optional[str]) -> None:
     """get pets"""
@@ -152,7 +170,7 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
 
     sp = SurePetcare(auth_token=token)
     pets = await sp.pets
-    await sp.close_session()
+    await sp.sac.close_session()
 
     await json_response(pets, ctx)
 
@@ -165,34 +183,26 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
     table.add_column("ID 👤 ", justify="right")
     table.add_column("Household 🏡", justify="right")
 
-    sorted_pets = sorted(pets, key=lambda x: int(pets[x]["household_id"]))
+    # sorted_pets = sorted(pets, key=lambda x: int(pets[x]["household_id"]))
 
-    for pet_id in sorted_pets:
-        pet: Dict[str, Any] = pets[pet_id]
+    for pet_id in pets:
+        pet: Pet = pets[pet_id]
 
-        where = (
-            "unknown"
-            if "position" not in pet or "where" not in pet["position"]
-            else SureLocationID(pet["position"]["where"]).name.capitalize()
-        )
+        change_a = change_b = lunch_time = None
 
-        if (status := pet.get("status")) and (feeding := status.get("feeding")):
-            change_a, change_b = feeding["change"]
-            change_a = f"{change_a}g"
-            change_b = f"{change_b}g"
-            ate_at = feeding["at"]
-            lunch_time = str(datetime.fromisoformat(ate_at).strftime("%d/%m %H:%M"))
-        else:
-            change_a = change_b = lunch_time = ""
+        if pet.feeding:
+            change_a = f"{pet.feeding.change[0]}g"
+            change_b = f"{pet.feeding.change[1]}g"
+            lunch_time = pet.feeding.at if pet.feeding.at else None
 
         table.add_row(
-            str(pet["name"]),
-            str(where),
+            str(pet.name),
+            str(pet.location),
             f"{change_a}",
             f"{change_b}",
             str(lunch_time),
-            str(pet["id"]),
-            str(pet["household_id"]),
+            str(pet.pet_id),
+            str(pet.household_id),
         )
 
     console.print(table, "", sep="\n")
@@ -200,7 +210,9 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
 
 @cli.command()
 @click.pass_context
-@click.option("-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
 @coro
 async def devices(ctx: click.Context, token: Optional[str]) -> None:
     """get devices"""
@@ -209,27 +221,28 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
 
     sp = SurePetcare(auth_token=str(token))
     devices = await sp.devices
-    await sp.close_session()
+    await sp.sac.close_session()
 
     await json_response(devices, ctx)
 
     table = Table(title="[bold][#ff1d5e]·[/] Devices [#ff1d5e]·[/]", box=box.MINIMAL)
     table.add_column("ID", justify="right", style="")
     table.add_column("Household", justify="right", style="")
-    table.add_column("Type", style="")
     table.add_column("Name", style="bold")
-    table.add_column("Serial", justify="right", style="")
+    table.add_column("Type", style="")
+    table.add_column("Serial", style="")
 
-    sorted_devices = sorted(devices, key=lambda x: int(devices[x]["household_id"]))
+    # sorted_devices = sorted(devices, key=lambda x: int(devices[x]["household_id"]))
 
-    for device_id in sorted_devices:
-        device: Dict[str, Any] = devices[device_id]
+    for device_id in devices:
+        device = devices[device_id]
+
         table.add_row(
-            str(device["id"]),
-            str(device["household_id"]),
-            str(SurepyProduct(device["product_id"]).name.replace("_", " ").title()),
-            str(device.get("name", "unknown")),
-            str(device.get("serial_number", "-")),
+            str(device.id),
+            str(device.household_id),
+            str(device.name),
+            str(device.type.name.replace("_", " ").title()),
+            str(device.serial) or "-",
         )
 
     console.print(table, "", sep="\n")
@@ -237,9 +250,13 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
 
 @cli.command()
 @click.pass_context
-@click.option("-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
 @click.option("-p", "--pet", "pet_id", required=False, type=int, help="id of the pet")
-@click.option("-h", "--household", "household_id", required=True, type=int, help="id of the household")
+@click.option(
+    "-h", "--household", "household_id", required=True, type=int, help="id of the household"
+)
 @coro
 async def report(
     ctx: click.Context, household_id: int, pet_id: Optional[int] = None, token: Optional[str] = None
@@ -265,29 +282,46 @@ async def report(
 
         for pet in data:
 
+            datapoints: List[Any]
             if (movement := pet["movement"]) and (datapoints := movement["datapoints"]):
 
-                for datapoint in datapoints[-25:]:
+                datapoints.sort(key=lambda x: datetime.fromisoformat(x["to"]), reverse=True)
+
+                pets = await sp.pets
+                devices = await sp.devices
+
+                for datapoint in datapoints[:25]:  # [-25:]:
 
                     if "active" in datapoint:
                         continue
 
+                    entry_device: Optional[SurepyDevice] = None
+                    exit_device: Optional[SurepyDevice] = None
+
+                    if (entry_device_id := datapoint.get("entry_device_id")) and (
+                        exit_device_id := datapoint.get("exit_device_id")
+                    ):
+                        entry_device = devices.get(entry_device_id)
+                        exit_device = devices.get(exit_device_id)
+
                     table.add_row(
-                        str((await sp.pet(pet["pet_id"])).get("name")),
+                        str((pets[pet["pet_id"]]).name),
                         str(str(datetime.fromisoformat(datapoint["from"]).strftime("%d/%m %H:%M"))),
                         str(str(datetime.fromisoformat(datapoint["to"]).strftime("%d/%m %H:%M"))),
                         str(natural_time(datapoint["duration"])),
-                        str((await sp.device(datapoint["entry_device_id"])).get("name")),
-                        str((await sp.device(datapoint["exit_device_id"])).get("name")),
+                        str(entry_device.name if entry_device else "-"),
+                        str(exit_device.name if exit_device else "-"),
                     )
 
         console.print(table, "", sep="\n")
-    await sp.close_session()
+    await sp.sac.close_session()
 
 
 @cli.command()
 @click.pass_context
-@click.option("-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
 @coro
 async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
     """get notifications"""
@@ -297,66 +331,89 @@ async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
 
     sp = SurePetcare(auth_token=str(token))
 
-    json_data = await sp.get_notification()
-    await sp.close_session()
+    json_data = await sp.get_notification() or None
+    await sp.sac.close_session()
 
-    await json_response(json_data, ctx)
+    if json_data:
 
-    if data := json_data.get("data"):
+        await json_response(json_data, ctx)
 
-        table = Table(box=box.MINIMAL)
+        if data := json_data.get("data"):
 
-        all_keys: Set[str] = set()
-        all_keys.update(*[entry.keys() for entry in data])
+            table = Table(box=box.MINIMAL)
 
-        for key in all_keys:
-            table.add_column(str(key))
+            all_keys: Set[str] = set()
+            all_keys.update(*[entry.keys() for entry in data])
 
-        for entry in data:
-            table.add_row(*([str(e) for e in entry.values()]))
+            for key in all_keys:
+                table.add_column(str(key))
 
-        console.print(table, "", sep="\n")
+            for entry in data:
+                table.add_row(*([str(e) for e in entry.values()]))
+
+            console.print(table, "", sep="\n")
 
 
 @cli.command()
 @click.pass_context
-@click.option("-d", "--device", "device_id", required=True, type=int, help="id of the sure petcare device")
-@click.option("-m", "--mode", required=True, type=click.Choice(["lock", "in", "out", "unlock"]), help="locking mode")
-@click.option("-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True)
+@click.option(
+    "-d", "--device", "device_id", required=True, type=int, help="id of the sure petcare device"
+)
+@click.option(
+    "-m",
+    "--mode",
+    required=True,
+    type=click.Choice(["lock", "in", "out", "unlock"]),
+    help="locking mode",
+)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
 @coro
-async def locking(ctx: click.Context, device_id: int, mode: str, token: Optional[str] = None) -> None:
+async def locking(
+    ctx: click.Context, device_id: int, mode: str, token: Optional[str] = None
+) -> None:
     """lock control"""
 
     token = token if token else ctx.obj.get("token", None)
 
     sp = SurePetcare(auth_token=str(token))
 
-    lock_control: Optional[Callable[..., Coroutine[Any, Any, Any]]] = None
+    flap: Optional[Flap]
+    if (flap := await sp.flap(flap_id=device_id)) and (type(flap) == Flap):
 
-    if mode == "lock":
-        lock_control = sp.lock
-        state = "locked"
-    elif mode == "in":
-        lock_control = sp.lock_in
-        state = "locked in"
-    elif mode == "out":
-        lock_control = sp.lock_out
-        state = "locked out"
-    elif mode == "unlock":
-        lock_control = sp.unlock
-        state = "unlocked"
-    else:
-        return
+        lock_control: Optional[Callable[..., Coroutine[Any, Any, Any]]] = None
 
-    with Halo(text=f"setting to '{state}'", spinner="dots", color="red") as spinner:
-
-        if await lock_control(device_id=device_id) and (device := await sp.device(device_id=device_id)):
-            spinner.succeed(f"{device.get('name')} set to '{state}' 🐾")
+        if mode == "lock":
+            lock_control = flap.lock
+            state = "locked"
+        elif mode == "in":
+            state = "locked in"
+        elif mode == "out":
+            lock_control = flap.lock_out
+            state = "locked out"
+        elif mode == "unlock":
+            lock_control = flap.unlock
+            state = "unlocked"
         else:
-            spinner.fail(f"setting to '{state}' probably worked but something else is fishy...!")
+            return
 
-    await sp.close_session()
-    print()
+        if lock_control:
+            with Halo(
+                text=f"setting {flap.name} to '{state}'", spinner="dots", color="red"
+            ) as spinner:
+
+                if await lock_control(device_id=device_id) and (
+                    device := await sp.flap(flap_id=device_id)
+                ):
+                    spinner.succeed(f"{device.name} set to '{state}' 🐾")
+                else:
+                    spinner.fail(
+                        f"setting to '{state}' probably worked but something else is fishy...!"
+                    )
+
+        await sp.sac.close_session()
+        # print()
 
 
 if __name__ == "__main__":

@@ -55,12 +55,10 @@ Feel free to add you project!
 * Thanks to [@rcastberg](https://github.com/rcastberg) for hist previous work on the [Sure Petcare](https://www.surepetcare.com) API ([github.com/rcastberg/sure_petcare](https://github.com/rcastberg/sure_petcare))
 * Thanks to [@wei](https://github.com/wei) for the  header image generator ([github.com/wei/socialify](https://github.com/wei/socialify))
 
----
-
 ## Meta
 
 **Ben Lebherz**: *cat lover 🐾 developer & maintainer* - [@benleb](https://github.com/benleb) | [@ben_leb](https://twitter.com/ben_leb)
 
 <!-- See also the list of [contributors](CONTRIBUTORS) who participated in this project. -->
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details

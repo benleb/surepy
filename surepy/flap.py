@@ -11,14 +11,10 @@ import logging
 
 from typing import Any, Dict, Optional
 
-from rich.console import Console
 from surepy.const import BASE_RESOURCE, CONTROL_RESOURCE
 from surepy.entities import SurepyDevice
 from surepy.enums import LockState
 from surepy.exceptions import SurePetcareError
-
-
-console = Console(width=100)
 
 
 class Flap(SurepyDevice):

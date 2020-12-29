@@ -18,7 +18,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Set
 import click
 
 from halo import Halo
-from rich import box  # , print
+from rich import box
 from rich.console import Console
 from rich.table import Table
 from surepy.entities import SurepyDevice

@@ -1,4 +1,3 @@
-
 class SurePetcareError(Exception):
     """General Sure Petcare Error exception occurred."""
 

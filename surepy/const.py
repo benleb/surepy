@@ -1,10 +1,4 @@
-# User-Agent string
-# _USER_AGENT = (
-#     "Mozilla/7.0 (Linux; Android 9.0; SX-G730F Build/NRD90M; wv) "
-#     "AppleWebKit/637.36 (KHTML, like Gecko) Version/4.0 "
-#     "Chrome/84.0.3282.137 Mobile Safari/637.36"
-# )
-
+# HTTP user agent
 SUREPY_USER_AGENT = "surepy {version} - https://github.com/benleb/surepy"
 
 # Sure Petcare API endpoints

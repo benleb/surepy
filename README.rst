@@ -78,8 +78,6 @@ Acknowledgments
 * Thanks to `@rcastberg <https://github.com/rcastberg>`_ for hist previous work on the `Sure Petcare <https://www.surepetcare.com>`_ API (\ `github.com/rcastberg/sure_petcare <https://github.com/rcastberg/sure_petcare>`_\ )
 * Thanks to `@wei <https://github.com/wei>`_ for the  header image generator (\ `github.com/wei/socialify <https://github.com/wei/socialify>`_\ )
 
-----
-
 Meta
 ----
 
@@ -92,4 +90,4 @@ Meta
 
 
 
-This project is licensed under the MIT License - see the `LICENSE.md <LICENSE.md>`_ file for details
+This project is licensed under the MIT License - see the `LICENSE <LICENSE>`_ file for details

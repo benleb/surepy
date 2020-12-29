@@ -225,7 +225,8 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
 
     await json_response(devices, ctx)
 
-    table = Table(title="[bold][#ff1d5e]·[/] Devices [#ff1d5e]·[/]", box=box.MINIMAL)
+    # table = Table(title="[bold][#ff1d5e]·[/] Devices [#ff1d5e]·[/]", box=box.MINIMAL)
+    table = Table(box=box.MINIMAL)
     table.add_column("ID", justify="right", style="")
     table.add_column("Household", justify="right", style="")
     table.add_column("Name", style="bold")
@@ -326,7 +327,6 @@ async def report(
 async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
     """get notifications"""
 
-    # if token := ctx.obj.get("token", find_token(token)):
     token = token if token else ctx.obj.get("token", None)
 
     sp = SurePetcare(auth_token=str(token))

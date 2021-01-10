@@ -14,7 +14,7 @@ from http.client import HTTPException
 from logging import Logger
 from os import environ
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid1
 
 import aiohttp
@@ -28,6 +28,7 @@ from surepy.const import (
     API_TIMEOUT,
     AUTH_RESOURCE,
     AUTHORIZATION,
+    BASE_RESOURCE,
     CONNECTION,
     CONTENT_TYPE_JSON,
     CONTENT_TYPE_TEXT_PLAIN,
@@ -35,6 +36,7 @@ from surepy.const import (
     HOST,
     HTTP_HEADER_X_REQUESTED_WITH,
     ORIGIN,
+    PET_RESOURCE,
     REFERER,
     SUREPY_USER_AGENT,
     USER_AGENT,
@@ -259,3 +261,14 @@ class SureAPIClient:
         except (asyncio.TimeoutError, aiohttp.ClientError):
             logger.error("Can not load data from %s", resource)
             raise SurePetcareConnectionError()
+
+    async def get_pet(self, pet_id: int) -> Optional[List[Dict[str, Any]]]:
+        """Retrieve the pet data/state."""
+        resource = PET_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, pet_id=pet_id)
+
+        response_data: Optional[List[Dict[str, Any]]] = []
+
+        if response := await self.call(method="GET", resource=resource):
+            response_data = response.get("data")
+
+        return response_data

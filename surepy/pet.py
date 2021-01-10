@@ -7,13 +7,14 @@ The `Pet` classs of surepy
 """
 
 
-from datetime import datetime
 import logging
-from surepy.const import BASE_RESOURCE, POSITION_RESOURCE
-from typing import Any, Dict, Optional
+
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from surepy.client import SureAPIClient
+from surepy.const import BASE_RESOURCE, POSITION_RESOURCE
 from surepy.entities import PetActivity, PetLocation, StateFeeding, SurepyEntity
 from surepy.enums import FoodType, Location
 from surepy.exceptions import SurePetcareError
@@ -117,3 +118,16 @@ class Pet(SurepyEntity):
 
         # return None
         raise SurePetcareError(f"Setting position of {self.name} failed!")
+
+    async def refresh(self) -> Optional[Dict[str, Any]]:
+
+        data: Optional[List[Dict[str, Any]]]
+        pet_data: Optional[Dict[str, Any]] = None
+
+        if (data := await self._sac.get_pet(self.pet_id)) and (
+            pet_data := [p for p in data if p["id"] == self.pet_id].pop()
+        ):
+
+            self._data = pet_data
+
+        return pet_data

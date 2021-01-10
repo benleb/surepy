@@ -8,12 +8,15 @@ The `Pet` classs of surepy
 
 
 from datetime import datetime
+import logging
+from surepy.const import BASE_RESOURCE, POSITION_RESOURCE
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 from surepy.client import SureAPIClient
 from surepy.entities import PetActivity, PetLocation, StateFeeding, SurepyEntity
 from surepy.enums import FoodType, Location
+from surepy.exceptions import SurePetcareError
 
 
 REQUIRED_KEYS = ["id", "name", "household_id"]
@@ -90,3 +93,27 @@ class Pet(SurepyEntity):
     @property
     def last_lunch(self) -> Optional[datetime]:
         return self.feeding.at if self.feeding else None
+
+    async def set_position(self, position: Location) -> Optional[Dict[str, Any]]:
+        """Retrieve the flap data/state."""
+        resource = POSITION_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, pet_id=self.pet_id)
+        data = {
+            "where": int(position.value),
+            "since": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+        if (response := await self._sac.call(method="POST", resource=resource, data=data)) and (
+            response_data := response.get("data")
+        ):
+
+            desired_state = data.get("where")
+            state = response_data.get("where")
+
+            logging.debug(f"bool({state} == {desired_state}) = {bool(state == desired_state)}")
+
+            # check if the state is correctly updated
+            if state == desired_state:
+                return response
+
+        # return None
+        raise SurePetcareError(f"Setting position of {self.name} failed!")

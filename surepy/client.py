@@ -207,7 +207,7 @@ class SureAPIClient:
         if not self._auth_token:
             self._auth_token = self.get_token()
 
-        if method not in ["GET", "PUT"]:
+        if method not in ["GET", "PUT", "POST"]:
             raise HTTPException("unknown http method: %d", str(method))
 
         response_data: Dict[str, Any] = {}
@@ -230,7 +230,7 @@ class SureAPIClient:
 
                 logger.debug("response.status: %d", response.status)
 
-            if response.status == HTTPStatus.OK:
+            if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
 
                 self.resources[resource] = response_data = await response.json()
 

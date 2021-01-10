@@ -12,6 +12,7 @@ from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from shutil import copyfile
+from surepy.enums import Location
 from sys import exit
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Set
 
@@ -411,6 +412,52 @@ async def locking(
                     spinner.fail(
                         f"setting to '{state}' probably worked but something else is fishy...!"
                     )
+
+        await sp.sac.close_session()
+        # print()
+
+
+@cli.command()
+@click.pass_context
+@click.option("--pet", "pet_id", required=True, type=int, help="id of the pet")
+@click.option(
+    "--position",
+    required=True,
+    type=click.Choice(["in", "out"]),
+    help="position",
+)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
+@coro
+async def position(
+    ctx: click.Context, pet_id: int, position: str, token: Optional[str] = None
+) -> None:
+    """set pet position"""
+
+    token = token if token else ctx.obj.get("token", None)
+
+    sp = SurePetcare(auth_token=str(token))
+
+    pet: Optional[Pet]
+    location: Optional[Location]
+
+    if (pet := await sp.pet(pet_id=pet_id)) and (type(pet) == Pet):
+
+        if position == "in":
+            location = Location.INSIDE
+        elif position == "out":
+            location = Location.OUTSIDE
+        else:
+            return
+
+        if location:
+            if await pet.set_position(location):
+                console.print(f"{pet.name} set to '{location.name}' 🐾")
+            else:
+                console.print(
+                    f"setting to '{location.name}' probably worked but something else is fishy...!"
+                )
 
         await sp.sac.close_session()
         # print()

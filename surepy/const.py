@@ -8,6 +8,7 @@ MESTART_RESOURCE: str = f"{BASE_RESOURCE}/me/start"
 TIMELINE_RESOURCE: str = f"{BASE_RESOURCE}/timeline"
 NOTIFICATION_RESOURCE: str = f"{BASE_RESOURCE}/notification"
 CONTROL_RESOURCE: str = "{BASE_RESOURCE}/device/{device_id}/control"
+POSITION_RESOURCE: str = "{BASE_RESOURCE}/pet/{pet_id}/position"
 
 API_TIMEOUT = 45
 

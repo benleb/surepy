@@ -280,10 +280,13 @@ class SurePetcare:
                 sure_entities[entity_type][entity["id"]] = surepy_entity
 
         if sure_type == "devices":
-            flaps = sure_entities[EntityType.CAT_FLAP].copy()
-            flaps.update(sure_entities[EntityType.PET_FLAP])
+            flaps = {
+                **sure_entities.get(EntityType.CAT_FLAP, {}),
+                **sure_entities.get(EntityType.PET_FLAP, {})
+            }
+
             return flaps
         # elif sure_type == "pets":
-        #     sure_entities[EntityType.PET]
+        #     sure_entities.get(EntityType.PET, {})
         else:
             return sure_entities[EntityType.PET]

@@ -18,6 +18,7 @@ class EntityType(SureEnum):
     FEEDER = 4  # Microchip Pet Feeder Connect
     PROGRAMMER = 5  # Programmer
     CAT_FLAP = 6  # Cat Flap Connect
+    DEVICES = 13  # rtificial ID, Pet Flap + Cat Flap + Feeder = 3 + 6 + 4 = 13  ¯\_(ツ)_/¯
 
 
 class LockState(SureEnum):

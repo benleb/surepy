@@ -180,7 +180,7 @@ class SurePetcare:
 
     @property
     async def devices(self) -> Dict[int, SurepyDevice]:
-        return await self.get_entities("devices")
+        return await self.get_entities(EntityType.DEVICES)
 
     async def device(self, device_id: int) -> Optional[Union[SurepyDevice, Flap]]:
         return (await self.devices).get(device_id)
@@ -219,7 +219,7 @@ class SurePetcare:
 
     @property
     async def pets(self) -> Dict[int, Pet]:
-        return await self.get_entities("pets")
+        return await self.get_entities(EntityType.PET)
 
     async def pet(self, pet_id: int) -> Pet:
         return (await self.pets)[pet_id]
@@ -249,15 +249,20 @@ class SurePetcare:
             )
         ) or {}
 
-    async def get_entities(self, sure_type: str, refresh: bool = False) -> Dict[int, Any]:
+    # async def get_entities(self, sure_type: str, refresh: bool = False) -> Dict[int, Any]:
+    async def get_entities(self, sure_type: EntityType, refresh: bool = False) -> Dict[int, Any]:
 
         if MESTART_RESOURCE not in self._resource or refresh:
             await self.sac.call(method="GET", resource=MESTART_RESOURCE)
 
-        entities: Dict[int, Any] = {}
         sure_entities: Dict[EntityType, Dict[int, Union[SurepyEntity, SurepyDevice]]] = {}
 
-        if data := self.sac.resources[MESTART_RESOURCE].get("data", {}).get(sure_type):
+        # key used by sure petcare in api response
+        entity_type_key = (
+            f"{sure_type.name.lower()}s" if sure_type == EntityType.PET else sure_type.name.lower()
+        )
+
+        if data := self.sac.resources[MESTART_RESOURCE].get("data", {}).get(entity_type_key):
 
             for entity in data:
 
@@ -272,21 +277,23 @@ class SurePetcare:
                 else:
                     continue
 
-                entities[entity["id"]] = entity
-
                 if entity_type not in sure_entities:
                     sure_entities[entity_type] = {}
 
                 sure_entities[entity_type][entity["id"]] = surepy_entity
 
-        if sure_type == "devices":
-            flaps = {
-                **sure_entities.get(EntityType.CAT_FLAP, {}),
-                **sure_entities.get(EntityType.PET_FLAP, {})
-            }
+        # entities of the requested type
+        entities: Dict[int, Any] = {}
 
-            return flaps
-        # elif sure_type == "pets":
-        #     sure_entities.get(EntityType.PET, {})
-        else:
-            return sure_entities[EntityType.PET]
+        if sure_type == EntityType.DEVICES:
+
+            if cat_flaps := sure_entities.get(EntityType.CAT_FLAP):
+                entities.update(cat_flaps)
+            if pet_flaps := sure_entities.get(EntityType.PET_FLAP):
+                entities.update(pet_flaps)
+
+        elif sure_type == EntityType.PET and (pets := sure_entities.get(EntityType.PET)):
+
+            entities.update(pets)
+
+        return entities

@@ -2,7 +2,7 @@
 
 Library & CLI to interact with the Sure Petcare API. [**surepy**](https://github.com/benleb/surepy) lets you monitor and control the Pet Door/Cat Flap Connect 🚪 and the Pet Feeder Connect 🍽 by [Sure Petcare](https://www.surepetcare.com).
 
-[**surepy**](https://github.com/benleb/surepy) can...
+[**surepy**](https://github.com/benleb/surepy) features
 
 🔑 **get an api token** with your account credentials  
 🚪 **lock/unlock** a door or flap  
@@ -15,9 +15,7 @@ Library & CLI to interact with the Sure Petcare API. [**surepy**](https://github
 
 ## Getting Started
 
-Currently [**surepy**](https://github.com/benleb/surepy) is only distributed via [pypi.org](https://pypi.org). Maybe there will be a little Docker Image eventually.
-
-### Install via [pypi.org](https://pypi.org)
+[**surepy**](https://github.com/benleb/surepy) is available via [pypi.org](https://pypi.org)
 
 ```bash
 python3 -m pip install --upgrade surepy
@@ -25,21 +23,36 @@ python3 -m pip install --upgrade surepy
 pip install --upgrade surepy
 ```
 
-## Usage
-
-*needs a little more documentation maybe...*
-
-### CLI
-
-*the cli probably has some bugs, be careful* 🐾
-
+there is also a small cli available
 ```bash
-surepy --help
+$ surepy --help
+Usage: surepy [OPTIONS] COMMAND [ARGS]...
+
+  surepy cli 🐾
+
+  https://github.com/benleb/surepy
+
+Options:
+  --version         show surepy version
+  -j, --json        enable json api response output
+  -t, --token TEXT  api token
+  --help            Show this message and exit.
+
+Commands:
+  devices       get devices
+  locking       lock control
+  notification  get notifications
+  pets          get pets
+  position      set pet position
+  report        get pet/household report
+  token         get a token
 ```
+>*the cli probably has some bugs, as it is mainly intended for debugging purposes - be careful* 🐾
 
-### Library
 
-see (the not yet written) [docs](https://surepy.readthedocs.io/en/latest/)
+<!-- ### Library
+
+see (the not yet written) [docs](https://surepy.readthedocs.io/en/latest/) -->
 
 ---
 

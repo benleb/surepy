@@ -46,6 +46,9 @@ pycodestyle = "^2.6.0"
 bandit = "^1.6.2"
 Sphinx = "^3.2.1"
 sphinxcontrib-napoleon = "^0.7"
+pytest = "^6.2.1"
+coverage = {extras = ["toml"], version = "^5.3.1"}
+pytest-cov = "^2.10.1"
 
 [tool.poetry.scripts]
 surepy = 'surepy.cli:cli'
@@ -91,6 +94,16 @@ from = {format = "poetry", path = "pyproject.toml"}
 envs = ["main"]
 # and convert into setup.py
 to = {format = "setuppy", path = "setup.py"}
+
+[tool.coverage.paths]
+source = ["surepy"]
+
+[tool.coverage.run]
+branch = true
+source = ["surepy"]
+
+[tool.coverage.report]
+show_missing = true
 
 [build-system]
 requires = ["poetry_core>=1.0.0"]

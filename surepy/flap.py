@@ -1,7 +1,7 @@
 """
-surepy.pet
+surepy.flap
 ====================================
-The `Flap` classs of surepy
+Class representing a Sure Petcare Cat- or Pet-Flap.
 
 |license-info|
 """
@@ -18,6 +18,8 @@ from surepy.exceptions import SurePetcareError
 
 
 class Flap(SurepyDevice):
+    """Sure Petcare Cat- or Pet-Flap."""
+
     async def lock(self, device_id: int) -> Optional[Dict[str, Any]]:
         """Retrieve the flap data/state."""
         return await self._locking(device_id, LockState.LOCKED_ALL)

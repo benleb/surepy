@@ -22,8 +22,7 @@ from halo import Halo
 from rich import box
 from rich.console import Console
 from rich.table import Table
-from surepy.entities import SurepyDevice
-from surepy.flap import Flap
+from surepy.devices import Flap
 from surepy.pet import Pet
 
 from . import (
@@ -170,10 +169,9 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
     token = token if token else ctx.obj.get("token", None)
 
     sp = SurePetcare(auth_token=token)
-    pets = await sp.pets
-    await sp.sac.close_session()
+    await sp.refresh_entities()
 
-    await json_response(pets, ctx)
+    await json_response(sp.pets, ctx)
 
     table = Table(box=box.MINIMAL)
     table.add_column("Name", style="bold")
@@ -186,8 +184,8 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
 
     # sorted_pets = sorted(pets, key=lambda x: int(pets[x]["household_id"]))
 
-    for pet_id in pets:
-        pet: Pet = pets[pet_id]
+    for pet_id in sp.pets:
+        pet: Pet = sp.pets[pet_id]
 
         change_a = change_b = lunch_time = None
 
@@ -221,10 +219,9 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
     token = token if token else ctx.obj.get("token", None)
 
     sp = SurePetcare(auth_token=str(token))
-    devices = await sp.devices
-    await sp.sac.close_session()
+    await sp.refresh_entities()
 
-    await json_response(devices, ctx)
+    await json_response(sp.devices, ctx)
 
     # table = Table(title="[bold][#ff1d5e]·[/] Devices [#ff1d5e]·[/]", box=box.MINIMAL)
     table = Table(box=box.MINIMAL)
@@ -236,8 +233,9 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
 
     # sorted_devices = sorted(devices, key=lambda x: int(devices[x]["household_id"]))
 
-    for device_id in devices:
-        device = devices[device_id]
+    for device_id in sp.devices:
+
+        device = sp.devices[device_id]
 
         table.add_row(
             str(device.id),
@@ -268,6 +266,7 @@ async def report(
     token = token if token else ctx.obj.get("token", None)
 
     sp = SurePetcare(auth_token=str(token))
+    await sp.refresh_entities()
 
     json_data = await sp.get_report(pet_id=pet_id, household_id=household_id)
 
@@ -277,7 +276,7 @@ async def report(
 
         table = Table(box=box.MINIMAL)
 
-        all_keys: List[str] = ["pet", "from", "to", "duration", "entry_device_id", "exit_device_id"]
+        all_keys: List[str] = ["pet", "from", "to", "duration", "entry_device", "exit_device"]
 
         for key in all_keys:
             table.add_column(str(key))
@@ -287,36 +286,33 @@ async def report(
             datapoints: List[Any]
             if (movement := pet["movement"]) and (datapoints := movement["datapoints"]):
 
-                datapoints.sort(key=lambda x: datetime.fromisoformat(x["to"]), reverse=True)
+                datapoints.sort(key=lambda x: datetime.fromisoformat(x["from"]), reverse=True)
 
-                pets = await sp.pets
-                devices = await sp.devices
+                for datapoint in datapoints[:25]:
 
-                for datapoint in datapoints[:25]:  # [-25:]:
+                    from_time = datetime.fromisoformat(datapoint["from"])
 
                     if "active" in datapoint:
-                        continue
+                        datapoint["duration"] = (
+                            datetime.now(tz=from_time.tzinfo) - from_time
+                        ).total_seconds()
+                        to_time = "- active - "
+                    else:
+                        to_time = datetime.fromisoformat(datapoint["to"])
 
-                    entry_device: Optional[SurepyDevice] = None
-                    exit_device: Optional[SurepyDevice] = None
-
-                    if (entry_device_id := datapoint.get("entry_device_id")) and (
-                        exit_device_id := datapoint.get("exit_device_id")
-                    ):
-                        entry_device = devices.get(entry_device_id)
-                        exit_device = devices.get(exit_device_id)
+                    entry_device = sp.devices.get(datapoint.get("entry_device_id", 0), None)
+                    exit_device = sp.devices.get(datapoint.get("exit_device_id", 0), None)
 
                     table.add_row(
-                        str((pets[pet["pet_id"]]).name),
-                        str(str(datetime.fromisoformat(datapoint["from"]).strftime("%d/%m %H:%M"))),
-                        str(str(datetime.fromisoformat(datapoint["to"]).strftime("%d/%m %H:%M"))),
+                        str((sp.pets[pet["pet_id"]]).name),
+                        str(from_time.strftime("%d/%m %H:%M")),
+                        str(to_time.strftime("%d/%m %H:%M")),
                         str(natural_time(datapoint["duration"])),
                         str(entry_device.name if entry_device else "-"),
                         str(exit_device.name if exit_device else "-"),
                     )
 
         console.print(table, "", sep="\n")
-    await sp.sac.close_session()
 
 
 @cli.command()
@@ -333,7 +329,6 @@ async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
     sp = SurePetcare(auth_token=str(token))
 
     json_data = await sp.get_notification() or None
-    await sp.sac.close_session()
 
     if json_data:
 
@@ -414,7 +409,6 @@ async def locking(
                     )
 
         await sp.sac.close_session()
-        # print()
 
 
 @cli.command()
@@ -460,7 +454,6 @@ async def position(
                 )
 
         await sp.sac.close_session()
-        # print()
 
 
 if __name__ == "__main__":

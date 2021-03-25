@@ -103,9 +103,10 @@ class SureAPIClient:
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
         # self._loop = loop or asyncio.get_event_loop()
-        self._session = session or aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(verify_ssl=False)
-        )
+        self._session = session
+        # or aiohttp.ClientSession(
+        #     connector=aiohttp.TCPConnector(ssl=False)
+        # )
         # self._session = session or aiohttp.ClientSession()
 
         # sure petcare credentials
@@ -225,10 +226,17 @@ class SureAPIClient:
 
                 logger.debug("headers: %s", headers)
 
-                await self._session.options(resource, headers=headers)
-                response: aiohttp.ClientResponse = await self._session.request(
+                session: aiohttp.ClientSession = (
+                    self._session
+                    if self._session
+                    else aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False))
+                )
+                await session.options(resource, headers=headers)
+                response: aiohttp.ClientResponse = await session.request(
                     method, resource, headers=headers, data=data
                 )
+                if not self._session:
+                    await session.close()
 
                 logger.debug("response.status: %d", response.status)
 

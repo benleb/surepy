@@ -291,14 +291,16 @@ async def report(
                 for datapoint in datapoints[:25]:
 
                     from_time = datetime.fromisoformat(datapoint["from"])
+                    to_time = (
+                        datetime.fromisoformat(datapoint["to"])
+                        if "active" not in datapoint
+                        else None
+                    )
 
                     if "active" in datapoint:
                         datapoint["duration"] = (
                             datetime.now(tz=from_time.tzinfo) - from_time
                         ).total_seconds()
-                        to_time = "- active - "
-                    else:
-                        to_time = datetime.fromisoformat(datapoint["to"])
 
                     entry_device = sp.devices.get(datapoint.get("entry_device_id", 0), None)
                     exit_device = sp.devices.get(datapoint.get("exit_device_id", 0), None)
@@ -306,7 +308,7 @@ async def report(
                     table.add_row(
                         str((sp.pets[pet["pet_id"]]).name),
                         str(from_time.strftime("%d/%m %H:%M")),
-                        str(to_time.strftime("%d/%m %H:%M")),
+                        str(to_time.strftime("%d/%m %H:%M") if to_time else "-"),
                         str(natural_time(datapoint["duration"])),
                         str(entry_device.name if entry_device else "-"),
                         str(exit_device.name if exit_device else "-"),

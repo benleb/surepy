@@ -1,20 +1,31 @@
 """
-surepy.flap
+surepy.devices
 ====================================
-Class representing a Sure Petcare Cat- or Pet-Flap.
+ABC representing a Sure Petcare Device.
 
 |license-info|
 """
 
-
 import logging
 
+from abc import ABC
 from typing import Any, Dict, Optional
 
 from surepy.const import BASE_RESOURCE, CONTROL_RESOURCE
-from surepy.entities import SurepyDevice
+from surepy.entities import SurepyEntity
 from surepy.enums import LockState
 from surepy.exceptions import SurePetcareError
+
+
+class SurepyDevice(SurepyEntity, ABC):
+    @property
+    def serial(self) -> Optional[str]:
+        """ID of the household the pet belongs to."""
+        return str(serial) if (serial := self._data.get("serial_number")) else None
+
+
+class Hub(SurepyDevice):
+    """Sure Petcare Hub."""
 
 
 class Flap(SurepyDevice):

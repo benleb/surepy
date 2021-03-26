@@ -37,13 +37,6 @@ class SurepyEntity(ABC):
         return int(household_id) if (household_id := self._data.get("household_id")) else None
 
 
-class SurepyDevice(SurepyEntity, ABC):
-    @property
-    def serial(self) -> Optional[str]:
-        """ID of the household the pet belongs to."""
-        return str(serial) if (serial := self._data.get("serial_number")) else None
-
-
 @dataclass
 class StateFeeding:
 

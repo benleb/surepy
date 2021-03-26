@@ -22,9 +22,8 @@ from surepy.const import (
     NOTIFICATION_RESOURCE,
     TIMELINE_RESOURCE,
 )
-from surepy.entities import SurepyDevice
 from surepy.enums import EntityType
-from surepy.devices import Flap, Hub
+from surepy.devices import SurepyDevice, Flap, Hub
 from surepy.pet import Pet
 
 
@@ -40,6 +39,14 @@ logger: Logger = logging.getLogger(__name__)
 
 
 def natural_time(duration: int) -> str:
+    """Transforms a number of seconds to a more human-friendly string.
+
+    Args:
+        duration (int): duration in seconds
+
+    Returns:
+        str: human-friendly duration string
+    """
 
     duration_h, duration_min = divmod(duration, float(60 * 60))
     duration_min, duration_sec = divmod(duration_min, float(60))

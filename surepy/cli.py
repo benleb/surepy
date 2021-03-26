@@ -386,6 +386,7 @@ async def locking(
             lock_control = flap.lock
             state = "locked"
         elif mode == "in":
+            lock_control = flap.lock_in
             state = "locked in"
         elif mode == "out":
             lock_control = flap.lock_out

@@ -36,6 +36,7 @@ rich = "^9.1.0"
 halo = "^0.0.30"
 requests = "^2.24.0"
 click = "^7.1.2"
+attrs = "^20.3.0"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
@@ -87,13 +88,10 @@ exclude = '''
 )
 '''
 
-[tool.dephell.main]
-# read from poetry format
-from = {format = "poetry", path = "pyproject.toml"}
-# drop dev-dependencies
-envs = ["main"]
-# and convert into setup.py
-to = {format = "setuppy", path = "setup.py"}
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov --setup-show --code-highlight=yes --verbose"
+testpaths = ["tests"]
 
 [tool.coverage.paths]
 source = ["surepy"]

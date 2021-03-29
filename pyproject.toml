@@ -32,7 +32,7 @@ python = "==3.*,>=3.8.0"
 aiohttp = {extras = ["speedups"], version = "^3.6.3"}
 async-timeout = "^3.0.1"
 colorama = "^0.4.4"
-rich = "^9.1.0"
+rich = ">=9.1,<11.0"
 halo = ">=0.0.30,<0.0.32"
 requests = "^2.24.0"
 click = "^7.1.2"

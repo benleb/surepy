@@ -8,7 +8,7 @@ The core module of surepy
 
 import asyncio
 import logging
-
+from datetime import datetime
 from http import HTTPStatus
 from http.client import HTTPException
 from logging import Logger
@@ -19,7 +19,6 @@ from uuid import uuid1
 
 import aiohttp
 import async_timeout
-import requests
 
 from surepy.const import (
     ACCEPT,
@@ -32,25 +31,30 @@ from surepy.const import (
     CONNECTION,
     CONTENT_TYPE_JSON,
     CONTENT_TYPE_TEXT_PLAIN,
+    CONTROL_RESOURCE,
     ETAG,
     HOST,
     HTTP_HEADER_X_REQUESTED_WITH,
     ORIGIN,
     PET_RESOURCE,
+    POSITION_RESOURCE,
     REFERER,
     SUREPY_USER_AGENT,
     USER_AGENT,
 )
+# import requests
+# from surepy.entities.devices import Feeder, Felaqua, Flap, Hub
+from surepy.enums import LockState, Location
 from surepy.exceptions import (
     SurePetcareAuthenticationError,
     SurePetcareConnectionError,
     SurePetcareError,
 )
 
+# from surepy.entities import SurepyEntity
 
 TOKEN_ENV = "SUREPY_TOKEN"
 TOKEN_FILE = Path("~/.surepy.token").expanduser()
-
 
 # get a logger
 logger: Logger = logging.getLogger(__name__)
@@ -71,7 +75,6 @@ def token_seems_valid(token: str) -> bool:
 
 
 def find_token() -> Optional[str]:
-
     token: Optional[str] = None
 
     # check env token
@@ -97,16 +100,14 @@ class SureAPIClient:
         email: Optional[str] = None,
         password: Optional[str] = None,
         # loop: Optional[asyncio.AbstractEventLoop] = None,
-        session: Optional[aiohttp.ClientSession] = None,
         auth_token: Optional[str] = None,
         api_timeout: int = API_TIMEOUT,
+        session: Optional[aiohttp.ClientSession] = None,
+        surepy_version: str = None,
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
         # self._loop = loop or asyncio.get_event_loop()
         self._session = session
-        # or aiohttp.ClientSession(
-        #     connector=aiohttp.TCPConnector(ssl=False)
-        # )
         # self._session = session or aiohttp.ClientSession()
 
         # sure petcare credentials
@@ -117,6 +118,8 @@ class SureAPIClient:
 
         # connection settings
         self._api_timeout: int = api_timeout
+
+        self._surepy_version: str = surepy_version
 
         # api token management
         self._auth_token: Optional[str] = None
@@ -137,16 +140,21 @@ class SureAPIClient:
 
     async def close_session(self) -> None:
         """close the aiohttp.ClientSession (without exposing self._session)"""
-        await self._session.close()
+        if self._session and not self._session.closed:
+            await self._session.close()
 
     def _generate_headers(self) -> Dict[str, str]:
         """Build a HTTP header accepted by the API"""
+        user_agent = (
+            SUREPY_USER_AGENT.format(version=self._surepy_version) if self._surepy_version else None
+        )
+
         return {
             HOST: "app.api.surehub.io",
             CONNECTION: "keep-alive",
             ACCEPT: f"{CONTENT_TYPE_JSON}, {CONTENT_TYPE_TEXT_PLAIN}, */*",
             ORIGIN: "https://surepetcare.io",
-            USER_AGENT: SUREPY_USER_AGENT,
+            USER_AGENT: user_agent if user_agent else SUREPY_USER_AGENT,
             REFERER: "https://surepetcare.io",
             ACCEPT_ENCODING: "gzip, deflate",
             ACCEPT_LANGUAGE: "en-US,en-GB;q=0.9",
@@ -155,7 +163,7 @@ class SureAPIClient:
             "X-Device-Id": self._device_id,
         }
 
-    def get_token(self) -> Optional[str]:
+    async def get_token(self) -> Optional[str]:
         """Get or refresh the authentication token."""
         authentication_data: Dict[str, Optional[str]] = dict(
             email_address=self.email, password=self.password, device_id=self._device_id
@@ -164,22 +172,22 @@ class SureAPIClient:
         token: Optional[str] = None
 
         try:
-            raw_response: requests.Response = requests.post(
+            raw_response: aiohttp.ClientResponse = await self._session.post(
                 url=AUTH_RESOURCE, data=authentication_data, headers=self._generate_headers()
             )
 
-            if raw_response.status_code == HTTPStatus.OK:
+            if raw_response.status == HTTPStatus.OK:
 
-                response: Dict[str, Any] = raw_response.json()
+                response: Dict[str, Any] = await raw_response.json()
 
                 if "data" in response and "token" in response["data"]:
                     token = self._auth_token = response["data"]["token"]
 
-            elif raw_response.status_code == HTTPStatus.NOT_MODIFIED:
+            elif raw_response.status == HTTPStatus.NOT_MODIFIED:
                 # Etag header matched, no new data available
                 pass
 
-            elif raw_response.status_code == HTTPStatus.UNAUTHORIZED:
+            elif raw_response.status == HTTPStatus.UNAUTHORIZED:
                 self._auth_token = None
                 raise SurePetcareAuthenticationError()
 
@@ -202,21 +210,24 @@ class SureAPIClient:
         resource: str,
         data: Optional[Dict[str, Any]] = None,
         second_try: bool = False,
-        **kwargs: Any,
+        session: aiohttp.ClientResponse = None,
+        **_: Any,
     ) -> Optional[Dict[str, Any]]:
         """Retrieve the flap data/state."""
 
         logger.debug("self._auth_token: %s", self._auth_token)
         if not self._auth_token:
-            self._auth_token = self.get_token()
+            self._auth_token = await self.get_token()
 
         if method not in ["GET", "PUT", "POST"]:
             raise HTTPException("unknown http method: %d", str(method))
 
-        response_data: Dict[str, Any] = {}
+        response_data = None
+
+        session = session if session else self._session
 
         try:
-            with async_timeout.timeout(self._api_timeout):  # , loop=self._loop):
+            with async_timeout.timeout(self._api_timeout):
                 headers = self._generate_headers()
 
                 # use etag if available
@@ -224,21 +235,13 @@ class SureAPIClient:
                     headers[ETAG] = str(self._etags.get(resource))
                     logger.debug("using available etag '%s' in headers: %s", ETAG, headers)
 
-                logger.debug("headers: %s", headers)
-
-                session: aiohttp.ClientSession = (
-                    self._session
-                    if self._session
-                    else aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False))
-                )
+                session: aiohttp.ClientSession = session if session else self._session
                 await session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await session.request(
                     method, resource, headers=headers, data=data
                 )
                 if not self._session:
                     await session.close()
-
-                logger.debug("response.status: %d", response.status)
 
             if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
 
@@ -262,7 +265,7 @@ class SureAPIClient:
                 raise SurePetcareAuthenticationError()
 
             else:
-                logger.info("Response from %s:\n%s", resource, response)
+                logger.info(f"Response from {resource}:\n{response}")
 
             return response_data
 
@@ -270,13 +273,76 @@ class SureAPIClient:
             logger.error("Can not load data from %s", resource)
             raise SurePetcareConnectionError()
 
-    async def get_pet(self, pet_id: int) -> Optional[List[Dict[str, Any]]]:
+    async def get_pets(self) -> Optional[List[Dict[str, Any]]]:
         """Retrieve the pet data/state."""
-        resource = PET_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, pet_id=pet_id)
+        resource = PET_RESOURCE
 
         response_data: Optional[List[Dict[str, Any]]] = []
 
-        if response := await self.call(method="GET", resource=resource):
+        response: Optional[Dict[str, Any]] = await self.call(method="GET", resource=resource)
+        if response:
             response_data = response.get("data")
 
         return response_data
+
+    async def set_pet_location(self, pet_id: int, location: Location) -> Optional[Dict[str, Any]]:
+        """Retrieve the flap data/state."""
+        resource = POSITION_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, pet_id=pet_id)
+        data = {
+            "where": int(location.value),
+            "since": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+        if (response := await self.call(method="POST", resource=resource, data=data)) and (
+            response_data := response.get("data")
+        ):
+
+            desired_state = data.get("where")
+            state = response_data.get("where")
+
+            logging.debug(f"bool({state} == {desired_state}) = {bool(state == desired_state)}")
+
+            # check if the state is correctly updated
+            if state == desired_state:
+                return response
+
+        raise SurePetcareError(f"Setting position of {pet_id} failed!")
+
+    async def lock(self, device_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieve the flap data/state."""
+        return await self._set_lock_state(device_id, LockState.LOCKED_ALL)
+
+    async def lock_in(self, device_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieve the flap data/state."""
+        return await self._set_lock_state(device_id, LockState.LOCKED_IN)
+
+    async def lock_out(self, device_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieve the flap data/state."""
+        return await self._set_lock_state(device_id, LockState.LOCKED_OUT)
+
+    async def unlock(self, device_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieve the flap data/state."""
+        return await self._set_lock_state(device_id, LockState.UNLOCKED)
+
+    async def _set_lock_state(self, device_id: int, mode: LockState) -> Optional[Dict[str, Any]]:
+        """Retrieve the flap data/state."""
+        resource = CONTROL_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id)
+        data = {"locking": int(mode.value)}
+
+        if (
+            response := await self.call(
+                method="PUT", resource=resource, device_id=device_id, data=data
+            )
+        ) and (response_data := response.get("data")):
+
+            desired_state = data.get("locking")
+            state = response_data.get("locking")
+
+            logging.debug(f"bool({state} == {desired_state}) = {bool(state == desired_state)}")
+
+            # check if the state is correctly updated
+            if state == desired_state:
+                return response
+
+        # return None
+        raise SurePetcareError("ERROR (UN)LOCKING DEVICE - PLEASE CHECK IMMEDIATELY!")

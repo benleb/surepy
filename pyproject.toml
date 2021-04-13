@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "surepy"
-version = "0.5.0"
+version = "0.6.0"
 description = "Library to interact with the flaps & doors from Sure Petcare."
 authors = ["Ben Lebherz <git@benleb.de>"]
 license = "MIT"
@@ -40,7 +40,6 @@ attrs = "^20.3.0"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
-mypy = "^0.812"
 isort = "^5.6.4"
 flake8 = "^3.8.4"
 pycodestyle = "^2.6.0"
@@ -52,7 +51,7 @@ coverage = {extras = ["toml"], version = "^5.3.1"}
 pytest-cov = "^2.10.1"
 
 [tool.poetry.scripts]
-surepy = 'surepy.cli:cli'
+surepy = 'surepy.surecli:cli'
 
 [tool.isort]
 balanced_wrapping = true

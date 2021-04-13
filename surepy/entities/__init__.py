@@ -3,19 +3,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from surepy.client import SureAPIClient
 from surepy.enums import EntityType, Location
 
 
 class SurepyEntity(ABC):
-    def __init__(self, data: Dict[str, Any], entity_type: EntityType, sac: SureAPIClient):
+    def __init__(self, data: Dict[str, Any]):
 
         # sure petcare id
-        self._id: int = int(data["id"])
+        self._id: int = int(data.get("id", data.get("_id")))
 
-        self._sac: SureAPIClient = sac
+        # self._sac: SureAPIClient = sac
         self._data = data
-        self._type = entity_type
+        self._type = EntityType(int(data.get("product_id", 0)))
 
         self._name: str = str(self._data.get("name"))
 
@@ -24,8 +23,16 @@ class SurepyEntity(ABC):
         return self._id
 
     @property
+    def unique_id(self):
+        return f"{self.household_id}-{self.id}"
+
+    @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.type.name}_{self.name}"
 
     @property
     def type(self) -> EntityType:
@@ -34,12 +41,19 @@ class SurepyEntity(ABC):
     @property
     def household_id(self) -> Optional[int]:
         """ID of the household the entity belongs to."""
-        return int(household_id) if (household_id := self._data.get("household_id")) else None
+        return (
+            int(household_id) if (household_id := self._data.get("household_id")) else None  # noqa
+        )
 
 
 @dataclass
 class StateFeeding:
+    change: List[float]
+    at: Optional[datetime]
 
+
+@dataclass
+class StateDrinking:
     change: List[float]
     at: Optional[datetime]
 

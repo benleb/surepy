@@ -1,3 +1,8 @@
+# battery voltages
+PET_FLAP_VOLTAGE_FULL = 1.6
+PET_FLAP_VOLTAGE_LOW = 1.25
+PET_FLAP_VOLTAGE_DIFF = PET_FLAP_VOLTAGE_FULL - PET_FLAP_VOLTAGE_LOW
+
 # HTTP user agent
 SUREPY_USER_AGENT = "surepy {version} - https://github.com/benleb/surepy"
 
@@ -7,8 +12,9 @@ AUTH_RESOURCE: str = f"{BASE_RESOURCE}/auth/login"
 MESTART_RESOURCE: str = f"{BASE_RESOURCE}/me/start"
 TIMELINE_RESOURCE: str = f"{BASE_RESOURCE}/timeline"
 NOTIFICATION_RESOURCE: str = f"{BASE_RESOURCE}/notification"
+PET_RESOURCE: str = f"{BASE_RESOURCE}/pet?with%5B%5D=photo&with%5B%5D=breed&with%5B%5D=conditions&with%5B%5D=tag&with%5B%5D=food_type&with%5B%5D=species&with%5B%5D=position&with%5B%5D=status"
+DEVICE_RESOURCE: str = f"{BASE_RESOURCE}/device?with%5B%5D=children&with%5B%5D=tags&with%5B%5D=control&with%5B%5D=status"
 CONTROL_RESOURCE: str = "{BASE_RESOURCE}/device/{device_id}/control"
-PET_RESOURCE: str = "{BASE_RESOURCE}/pet?with%5B%5D=photo&with%5B%5D=breed&with%5B%5D=conditions&with%5B%5D=tag&with%5B%5D=food_type&with%5B%5D=species&with%5B%5D=position&with%5B%5D=status"
 POSITION_RESOURCE: str = "{BASE_RESOURCE}/pet/{pet_id}/position"
 
 API_TIMEOUT = 45

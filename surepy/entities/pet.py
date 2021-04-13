@@ -1,38 +1,45 @@
 """
 surepy.pet
 ====================================
-The `Pet` classs of surepy
+The `Pet` class of surepy
 
 |license-info|
 """
 
 
-import logging
-
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
-from surepy.client import SureAPIClient
-from surepy.const import BASE_RESOURCE, POSITION_RESOURCE
-from surepy.entities import PetActivity, PetLocation, StateFeeding, SurepyEntity
-from surepy.enums import FoodType, Location
-from surepy.exceptions import SurePetcareError
-
-
-REQUIRED_KEYS = ["id", "name", "household_id"]
+from surepy.entities import (
+    PetActivity,
+    PetLocation,
+    StateDrinking,
+    StateFeeding,
+    SurepyEntity,
+)
+from surepy.entities.states import PetState
+from surepy.enums import EntityType, FoodType, Location
 
 
 class Pet(SurepyEntity):
-    def __init__(self, data: Dict[str, Any], sac: SureAPIClient):
+    def __init__(self, data: Dict[str, Any]):
 
-        # sure petcare id
+        super().__init__(data=data)
+
         self.pet_id: int = int(data["id"])
 
-        self._sac: SureAPIClient = sac
-        self._data = data
+        self._type: EntityType = EntityType.PET
+        self._data: Dict[str, Any] = data
 
         self._name = str(name) if (name := self._data.get("name")) else "Unnamed"
+
+        self.state = PetState(data["status"])
+
+    @property
+    def id(self) -> int:
+        """ID of the household the pet belongs to."""
+        return self.pet_id
 
     @property
     def tag_id(self) -> Optional[int]:
@@ -63,6 +70,11 @@ class Pet(SurepyEntity):
         )
 
     @property
+    def at_home(self) -> bool:
+        """Location of the Pet."""
+        return bool(self.location.where == Location.INSIDE)
+
+    @property
     def location(self) -> PetLocation:
         """Location of the Pet."""
         position = self._data.get("position", {})
@@ -86,7 +98,18 @@ class Pet(SurepyEntity):
         if activity := self._data.get("status", {}).get("feeding", {}):
             return StateFeeding(
                 change=activity.get("change", [0.0, 0.0]),
-                at=activity.get("at", None),
+                at=datetime.fromisoformat(activity.get("at", None)),
+            )
+
+        return None
+
+    @property
+    def drinking(self) -> Optional[StateDrinking]:
+        """Last Activity of the Pet."""
+        if activity := self._data.get("status", {}).get("drinking", {}):
+            return StateDrinking(
+                change=activity.get("change", [0.0]),
+                at=datetime.fromisoformat(activity.get("at", None)),
             )
 
         return None
@@ -95,39 +118,6 @@ class Pet(SurepyEntity):
     def last_lunch(self) -> Optional[datetime]:
         return self.feeding.at if self.feeding else None
 
-    async def set_position(self, position: Location) -> Optional[Dict[str, Any]]:
-        """Retrieve the flap data/state."""
-        resource = POSITION_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, pet_id=self.pet_id)
-        data = {
-            "where": int(position.value),
-            "since": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-
-        if (response := await self._sac.call(method="POST", resource=resource, data=data)) and (
-            response_data := response.get("data")
-        ):
-
-            desired_state = data.get("where")
-            state = response_data.get("where")
-
-            logging.debug(f"bool({state} == {desired_state}) = {bool(state == desired_state)}")
-
-            # check if the state is correctly updated
-            if state == desired_state:
-                return response
-
-        # return None
-        raise SurePetcareError(f"Setting position of {self.name} failed!")
-
-    async def refresh(self) -> Optional[Dict[str, Any]]:
-
-        data: Optional[List[Dict[str, Any]]]
-        pet_data: Optional[Dict[str, Any]] = None
-
-        if (data := await self._sac.get_pet(self.pet_id)) and (
-            pet_data := [p for p in data if p["id"] == self.pet_id].pop()
-        ):
-
-            self._data = pet_data
-
-        return pet_data
+    @property
+    def last_drink(self) -> Optional[datetime]:
+        return self.drinking.at if self.drinking else None

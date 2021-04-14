@@ -7,6 +7,7 @@ The core module of surepy
 """
 
 import logging
+
 from importlib.metadata import version
 from logging import Logger
 from typing import Any, Dict, List, Optional
@@ -26,6 +27,7 @@ from surepy.entities import SurepyEntity
 from surepy.entities.devices import Feeder, Felaqua, Flap, Hub, SurepyDevice
 from surepy.entities.pet import Pet
 from surepy.enums import EntityType
+
 
 __version__ = version(__name__)
 
@@ -85,9 +87,7 @@ class Surepy:
         # random device id
         self._device_id: str = str(uuid1())
 
-        self._session = (
-            session if session else aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False))
-        )
+        self._session = session
 
         self.sac = SureAPIClient(
             email=email,
@@ -213,45 +213,24 @@ class Surepy:
             )
         ) or {}
 
-    # async def get_pets(
-    #     self, refresh: bool = False, session: aiohttp.ClientResponse = None
-    # ) -> Dict[int, SurepyEntity]:
-    #     return {
-    #         pet.id: pet
-    #         for pet in (await self.get_entities()).values()
-    #         if pet.type == EntityType.PET
-    #     }
-
     async def get_pets(self) -> List[Pet]:
         return [pet for pet in (await self.get_entities()).values() if isinstance(pet, Pet)]
 
     async def get_devices(self) -> List[SurepyDevice]:
-        return [device for device in (await self.get_entities()).values() if isinstance(device, SurepyDevice)]
+        return [
+            device
+            for device in (await self.get_entities()).values()
+            if isinstance(device, SurepyDevice)
+        ]
 
-    # async def get_devices(
-    #     self, refresh: bool = False, session: aiohttp.ClientResponse = None
-    # ) -> Dict[int, SurepyEntity]:
-
-    #     devices = {
-    #         device.id: device
-    #         for device in (await self.get_entities()).values()
-    #         if device.type != EntityType.PET
-    #     }
-
-    #     return devices
-
-    async def get_entities(
-        self, refresh: bool = False, session: aiohttp.ClientResponse = None
-    ) -> Dict[int, SurepyEntity]:
+    async def get_entities(self, refresh: bool = False) -> Dict[int, SurepyEntity]:
         """Get all Entities (Pets/Devices)"""
 
-        session = session if session else self._session
-
         if MESTART_RESOURCE not in self._resource or refresh:
-            await self.sac.call(method="GET", resource=MESTART_RESOURCE, session=session)
+            await self.sac.call(method="GET", resource=MESTART_RESOURCE)
 
         raw_data: Dict[str, List[Dict[str, Any]]]
-        # devices
+
         surepy_entities: Dict[int, SurepyEntity] = {}
 
         if raw_data := self.sac.resources[MESTART_RESOURCE].get("data", {}):

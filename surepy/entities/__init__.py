@@ -45,6 +45,9 @@ class SurepyEntity(ABC):
             int(household_id) if (household_id := self._data.get("household_id")) else None  # noqa
         )
 
+    def raw_data(self) -> Dict[str, Any]:
+        return self._data
+
 
 @dataclass
 class StateFeeding:

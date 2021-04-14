@@ -26,7 +26,7 @@ from surepy.entities.pet import Pet
 
 from surepy import (
     TOKEN_ENV,
-    SurePetcare,
+    Surepy,
     __name__ as sp_name,
     __version__ as sp_version,
     natural_time,
@@ -74,7 +74,7 @@ def token_available(ctx: click.Context) -> Optional[str]:
 
 
 # async def json_response(
-#     data: Dict[str, Any], ctx: click.Context, sp: Optional[SurePetcare] = None
+#     data: Dict[str, Any], ctx: click.Context, sp: Optional[Surepy] = None
 # ) -> None:
 #     if ctx.obj.get("json", False):
 #         if sp:
@@ -139,18 +139,19 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
     surepy_token: Optional[str] = None
 
     with Halo(text="fetching token", spinner="dots", color="magenta") as spinner:
-        sp = SurePetcare(email=user, password=password)
+        async with ClientSession(connector=TCPConnector(ssl=False)) as session:
+            sp = Surepy(email=user, password=password, session=session)
 
-        if surepy_token := await sp.sac.get_token():
+            if surepy_token := await sp.sac.get_token():
 
-            spinner.succeed("token received!")
+                spinner.succeed("token received!")
 
-            if token_file.exists() and token != token_file.read_text(encoding="utf-8"):
-                copyfile(token_file, old_token_file)
+                if token_file.exists() and token != token_file.read_text(encoding="utf-8"):
+                    copyfile(token_file, old_token_file)
 
-            token_file.write_text(surepy_token, encoding="utf-8")
+                token_file.write_text(surepy_token, encoding="utf-8")
 
-        await sp.sac.close_session()
+        # await sp.sac.close_session()
 
     console.rule(f"[bold]{user}[/] [#ff1d5e]·[/] [bold]Token[/]", style="#ff1d5e")
     console.print(f"[bold]{token}[/]", soft_wrap=True)
@@ -170,7 +171,7 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
     token = token if token else ctx.obj.get("token", None)
 
     async with ClientSession(connector=TCPConnector(ssl=False)) as session:
-        sp = SurePetcare(auth_token=token, session=session)
+        sp = Surepy(auth_token=token, session=session)
 
         pets: List[Pet] = await sp.get_pets()
 
@@ -225,7 +226,7 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
     token = token if token else ctx.obj.get("token", None)
 
     async with ClientSession(connector=TCPConnector(ssl=False)) as session:
-        sp = SurePetcare(auth_token=token, session=session)
+        sp = Surepy(auth_token=token, session=session)
 
         devices: List[SurepyDevice] = await sp.get_devices()
 
@@ -275,7 +276,7 @@ async def report(
     token = token if token else ctx.obj.get("token", None)
 
     async with ClientSession(connector=TCPConnector(ssl=False)) as session:
-        sp = SurePetcare(auth_token=token, session=session)
+        sp = Surepy(auth_token=token, session=session)
 
         entities = await sp.get_entities()
 
@@ -349,7 +350,7 @@ async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
     token = token if token else ctx.obj.get("token", None)
 
     async with ClientSession(connector=TCPConnector(ssl=False)) as session:
-        sp = SurePetcare(auth_token=token, session=session)
+        sp = Surepy(auth_token=token, session=session)
 
         json_data = await sp.get_notification() or None
 
@@ -392,7 +393,7 @@ async def locking(
 
     token = token if token else ctx.obj.get("token", None)
 
-    sp = SurePetcare(auth_token=str(token))
+    sp = Surepy(auth_token=str(token))
 
     flap: Optional[Flap]
     if (flap := await sp.flap(flap_id=device_id)) and (type(flap) == Flap):
@@ -428,7 +429,7 @@ async def locking(
                         f"setting to '{state}' probably worked but something else is fishy...!"
                     )
 
-        await sp.sac.close_session()
+        # await sp.sac.close_session()
 
 
 @cli.command()
@@ -451,7 +452,7 @@ async def position(
 
     token = token if token else ctx.obj.get("token", None)
 
-    sp = SurePetcare(auth_token=str(token))
+    sp = Surepy(auth_token=str(token))
 
     pet: Optional[Pet]
     location: Optional[Location]
@@ -473,7 +474,7 @@ async def position(
                     f"setting to '{location.name}' probably worked but something else is fishy...!"
                 )
 
-        await sp.sac.close_session()
+        # await sp.sac.close_session()
 
 
 if __name__ == "__main__":

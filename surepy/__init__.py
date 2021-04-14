@@ -69,7 +69,7 @@ def natural_time(duration: int) -> str:
     return natural
 
 
-class SurePetcare:
+class Surepy:
     """Communication with the Sure Petcare API."""
 
     def __init__(

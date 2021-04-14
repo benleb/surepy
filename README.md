@@ -47,12 +47,54 @@ Commands:
   report        get pet/household report
   token         get a token
 ```
->*the cli probably has some bugs, as it is mainly intended for debugging purposes - be careful* 🐾
+
+>*the cli **is mainly intended for developing & debugging purposes** and probably has bugs - be careful* 🐾
+
+## Library example
+
+```python
+import asyncio
+
+from os import environ
+from pprint import pprint
+from typing import Dict, List
+
+from surepy import Surepy
+from surepy.entities import SurepyEntity
+from surepy.entities.devices import SurepyDevice
+from surepy.entities.pet import Pet
 
 
-<!-- ### Library
+async def main():
 
-see (the not yet written) [docs](https://surepy.readthedocs.io/en/latest/) -->
+    # # user/password authentication (gets a token in background)
+    # surepy = Surepy(email=user, password=password)
+
+    # token authentication (token supplied via SUREPY_TOKEN env var)
+    token = environ.get("SUREPY_TOKEN")
+    surepy = Surepy(auth_token=token)
+
+    # list with all pets
+    pets: List[Pet] = await surepy.get_pets()
+    for pet in pets:
+        print(f"\n\n{pet.name}: {pet.state} | {pet.location}\n")
+        pprint(pet.raw_data())
+
+    print(f"\n\n - - - - - - - - - - - - - - - - - - - -\n\n")
+
+    # all entities as id-indexed dict
+    entities: Dict[int, SurepyEntity] = await surepy.get_entities()
+
+    # list with alldevices
+    devices: List[SurepyDevice] = await surepy.get_devices()
+    for device in devices:
+        print(f"{device.name = } | {device.serial = } | {device.battery_level = }")
+        print(f"{device.type = } | {device.unique_id = } | {device.id = }")
+        print(f"{entities[device.parent_id].full_name = } | {entities[device.parent_id] = }\n")
+
+
+asyncio.run(main())
+```
 
 ---
 

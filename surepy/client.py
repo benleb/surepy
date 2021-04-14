@@ -50,7 +50,6 @@ from surepy.exceptions import (
     SurePetcareError,
 )
 
-# from surepy.entities import SurepyEntity
 
 TOKEN_ENV = "SUREPY_TOKEN"
 TOKEN_FILE = Path("~/.surepy.token").expanduser()
@@ -107,7 +106,6 @@ class SureAPIClient:
         """Initialize the connection to the Sure Petcare API."""
 
         self._session = session
-        # self._session = session or aiohttp.ClientSession()
 
         # sure petcare credentials
         self.email = email
@@ -137,11 +135,6 @@ class SureAPIClient:
 
         logger.debug("initialization completed | vars(): %s", vars())
 
-    async def close_session(self) -> None:
-        """close the aiohttp.ClientSession (without exposing self._session)"""
-        if self._session and not self._session.closed:
-            await self._session.close()
-
     def _generate_headers(self) -> Dict[str, str]:
         """Build a HTTP header accepted by the API"""
         user_agent = (
@@ -170,8 +163,10 @@ class SureAPIClient:
 
         token: Optional[str] = None
 
+        session = self._session if self._session else aiohttp.ClientSession()
+
         try:
-            raw_response: aiohttp.ClientResponse = await self._session.post(
+            raw_response: aiohttp.ClientResponse = await session.post(
                 url=AUTH_RESOURCE, data=authentication_data, headers=self._generate_headers()
             )
 
@@ -202,6 +197,9 @@ class SureAPIClient:
         except (aiohttp.ClientError, AttributeError) as error:
             logger.debug("Failed to fetch %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareError()
+        finally:
+            if not self._session:
+                await session.close()
 
     async def call(
         self,
@@ -209,7 +207,7 @@ class SureAPIClient:
         resource: str,
         data: Optional[Dict[str, Any]] = None,
         second_try: bool = False,
-        session: aiohttp.ClientResponse = None,
+        session: aiohttp.ClientSession = None,
         **_: Any,
     ) -> Optional[Dict[str, Any]]:
         """Retrieve the flap data/state."""
@@ -223,7 +221,7 @@ class SureAPIClient:
 
         response_data = None
 
-        session = session if session else self._session
+        session = self._session if self._session else aiohttp.ClientSession()
 
         try:
             with async_timeout.timeout(self._api_timeout):
@@ -234,43 +232,43 @@ class SureAPIClient:
                     headers[ETAG] = str(self._etags.get(resource))
                     logger.debug("using available etag '%s' in headers: %s", ETAG, headers)
 
-                session: aiohttp.ClientSession = session if session else self._session
                 await session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await session.request(
                     method, resource, headers=headers, data=data
                 )
-                if not self._session:
-                    await session.close()
 
-            if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
+                if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
 
-                self.resources[resource] = response_data = await response.json()
+                    self.resources[resource] = response_data = await response.json()
 
-                if ETAG in response.headers:
-                    self._etags[resource] = response.headers[ETAG].strip('"')
+                    if ETAG in response.headers:
+                        self._etags[resource] = response.headers[ETAG].strip('"')
 
-            elif response.status == HTTPStatus.NOT_MODIFIED:
-                # Etag header matched, no new data available
-                pass
+                elif response.status == HTTPStatus.NOT_MODIFIED:
+                    # Etag header matched, no new data available
+                    pass
 
-            elif response.status == HTTPStatus.UNAUTHORIZED:
-                logger.debug("AuthenticationError! Try: %s: %s", second_try, response)
-                self._auth_token = None
-                if not second_try:
-                    token_refreshed = self.get_token()
-                    if token_refreshed:
-                        await self.call(method="GET", resource=resource, second_try=True)
+                elif response.status == HTTPStatus.UNAUTHORIZED:
+                    logger.debug("AuthenticationError! Try: %s: %s", second_try, response)
+                    self._auth_token = None
+                    if not second_try:
+                        token_refreshed = self.get_token()
+                        if token_refreshed:
+                            await self.call(method="GET", resource=resource, second_try=True)
 
-                raise SurePetcareAuthenticationError()
+                    raise SurePetcareAuthenticationError()
 
-            else:
-                logger.info(f"Response from {resource}:\n{response}")
+                else:
+                    logger.info(f"Response from {resource}:\n{response}")
 
-            return response_data
+                return response_data
 
         except (asyncio.TimeoutError, aiohttp.ClientError):
             logger.error("Can not load data from %s", resource)
             raise SurePetcareConnectionError()
+        finally:
+            if not self._session:
+                await session.close()
 
     async def get_pets(self) -> Optional[List[Dict[str, Any]]]:
         """Retrieve the pet data/state."""

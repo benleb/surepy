@@ -8,6 +8,7 @@ The core module of surepy
 
 import asyncio
 import logging
+
 from datetime import datetime
 from http import HTTPStatus
 from http.client import HTTPException
@@ -42,9 +43,7 @@ from surepy.const import (
     SUREPY_USER_AGENT,
     USER_AGENT,
 )
-# import requests
-# from surepy.entities.devices import Feeder, Felaqua, Flap, Hub
-from surepy.enums import LockState, Location
+from surepy.enums import Location, LockState
 from surepy.exceptions import (
     SurePetcareAuthenticationError,
     SurePetcareConnectionError,
@@ -106,7 +105,7 @@ class SureAPIClient:
         surepy_version: str = None,
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
-        # self._loop = loop or asyncio.get_event_loop()
+
         self._session = session
         # self._session = session or aiohttp.ClientSession()
 

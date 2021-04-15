@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "surepy"
-version = "0.6.0"
+version = "0.5.5"
 description = "Library to interact with the flaps & doors from Sure Petcare."
 authors = ["Ben Lebherz <git@benleb.de>"]
 license = "MIT"
@@ -8,47 +8,45 @@ readme = "README.md"
 homepage = "https://github.com/benleb/surepy"
 repository = "https://github.com/benleb/surepy"
 documentation = "https://surepy.readthedocs.io"
-
 keywords = ["cat", "surepetcare", "home-assistant"]
-
 classifiers = [
-    "Topic :: Home Automation",
-    "Topic :: Software Development",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Intended Audience :: Developers",
-    "Intended Audience :: End Users/Desktop",
-    "Operating System :: OS Independent",
-    "Environment :: Console",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Development Status :: 4 - Beta",
-    "Development Status :: 5 - Production/Stable",
+  "Topic :: Home Automation",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: OS Independent",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
 ]
 
 [tool.poetry.dependencies]
-python = "==3.*,>=3.8.0"
-aiohttp = {extras = ["speedups"], version = "^3.6.3"}
+aiohttp = { extras = ["speedups"], version = "^3.6.3" }
 async-timeout = "^3.0.1"
-colorama = "^0.4.4"
-rich = "^9.1.0"
-halo = ">=0.0.30,<0.0.32"
-requests = "^2.24.0"
-click = "^7.1.2"
 attrs = "^20.3.0"
+click = "^7.1.2"
+colorama = "^0.4.4"
+halo = ">=0.0.30,<0.0.32"
+python = "==3.*,>=3.8.0"
+requests = "^2.24.0"
+rich = "^10.1.0"
 
 [tool.poetry.dev-dependencies]
-black = "^20.8b1"
-isort = "^5.6.4"
-flake8 = "^3.8.4"
-pycodestyle = "^2.6.0"
 bandit = "^1.6.2"
+black = "^20.8b1"
+coverage = { extras = ["toml"], version = "^5.3.1" }
+flake8 = "^3.8.4"
+isort = "^5.6.4"
+pycodestyle = "^2.6.0"
+pytest = "^6.2.1"
+pytest-cov = "^2.10.1"
 Sphinx = "^3.2.1"
 sphinxcontrib-napoleon = "^0.7"
-pytest = "^6.2.1"
-coverage = {extras = ["toml"], version = "^5.3.1"}
-pytest-cov = "^2.10.1"
 
 [tool.poetry.scripts]
 surepy = 'surepy.surecli:cli'
@@ -57,14 +55,14 @@ surepy = 'surepy.surecli:cli'
 balanced_wrapping = true
 combine_as_imports = true
 combine_star = true
+force_grid_wrap = 0
+include_trailing_comma = true
 line_length = 120
 lines_after_imports = 2
 lines_between_types = 1
+multi_line_output = 3
 order_by_type = true
 use_parentheses = true
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
 
 [tool.black]
 line-length = 120
@@ -88,8 +86,8 @@ exclude = '''
 '''
 
 [tool.pytest.ini_options]
-minversion = "6.0"
 addopts = "--cov --setup-show --code-highlight=yes --verbose"
+minversion = "6.0"
 testpaths = ["tests"]
 
 [tool.coverage.paths]
@@ -103,5 +101,5 @@ source = ["surepy"]
 show_missing = true
 
 [build-system]
-requires = ["poetry_core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+requires = ["poetry_core>=1.0.0"]

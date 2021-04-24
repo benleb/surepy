@@ -13,7 +13,7 @@ from pathlib import Path
 from shutil import copyfile
 from surepy.enums import Location
 from sys import exit
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Set
+from typing import Any, Callable, Coroutine
 
 import click
 
@@ -47,7 +47,7 @@ old_token_file = token_file.with_suffix(".old_token")
 
 console = Console(width=120)
 
-CONTEXT_SETTINGS: Dict[str, Any] = dict(help_option_names=["--help"])
+CONTEXT_SETTINGS: dict[str, Any] = dict(help_option_names=["--help"])
 
 version_message = (
     f" [#ffffff]{sp_name}[/] 🐾 [#666666]v[#aaaaaa]{sp_version.replace('.', '[#ff1d5e].[/]')}"
@@ -61,7 +61,7 @@ def print_header() -> None:
     print()
 
 
-def token_available(ctx: click.Context) -> Optional[str]:
+def token_available(ctx: click.Context) -> str | None:
     if token := ctx.obj.get("token"):
         return str(token)
 
@@ -74,7 +74,7 @@ def token_available(ctx: click.Context) -> Optional[str]:
 
 
 # async def json_response(
-#     data: Dict[str, Any], ctx: click.Context, sp: Optional[Surepy] = None
+#     data: dict[str, Any], ctx: click.Context, sp: Surepy | None = None
 # ) -> None:
 #     if ctx.obj.get("json", False):
 #         if sp:
@@ -136,7 +136,7 @@ def cli(ctx: click.Context, json: bool, user_token: str, version: bool) -> None:
 async def token(ctx: click.Context, user: str, password: str) -> None:
     """get a token"""
 
-    surepy_token: Optional[str] = None
+    surepy_token: str | None = None
 
     with Halo(text="fetching token", spinner="dots", color="magenta") as spinner:
         async with ClientSession(connector=TCPConnector(ssl=False)) as session:
@@ -165,7 +165,7 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
     "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
 )
 @coro
-async def pets(ctx: click.Context, token: Optional[str]) -> None:
+async def pets(ctx: click.Context, token: str | None) -> None:
     """get pets"""
 
     token = token if token else ctx.obj.get("token", None)
@@ -173,7 +173,7 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
     async with ClientSession(connector=TCPConnector(ssl=False)) as session:
         sp = Surepy(auth_token=token, session=session)
 
-        pets: List[Pet] = await sp.get_pets()
+        pets: list[Pet] = await sp.get_pets()
 
         table = Table(box=box.MINIMAL)
         table.add_column("Name", style="bold")
@@ -220,7 +220,7 @@ async def pets(ctx: click.Context, token: Optional[str]) -> None:
     "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
 )
 @coro
-async def devices(ctx: click.Context, token: Optional[str]) -> None:
+async def devices(ctx: click.Context, token: str | None) -> None:
     """get devices"""
 
     token = token if token else ctx.obj.get("token", None)
@@ -228,7 +228,7 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
     async with ClientSession(connector=TCPConnector(ssl=False)) as session:
         sp = Surepy(auth_token=token, session=session)
 
-        devices: List[SurepyDevice] = await sp.get_devices()
+        devices: list[SurepyDevice] = await sp.get_devices()
 
         # await json_response(devices, ctx)
 
@@ -269,7 +269,7 @@ async def devices(ctx: click.Context, token: Optional[str]) -> None:
 )
 @coro
 async def report(
-    ctx: click.Context, household_id: int, pet_id: Optional[int] = None, token: Optional[str] = None
+    ctx: click.Context, household_id: int, pet_id: int | None = None, token: str | None = None
 ) -> None:
     """get pet/household report"""
 
@@ -286,20 +286,20 @@ async def report(
 
             table = Table(box=box.MINIMAL)
 
-            all_keys: List[str] = ["pet", "from", "to", "duration", "entry_device", "exit_device"]
+            all_keys: list[str] = ["pet", "from", "to", "duration", "entry_device", "exit_device"]
 
             for key in all_keys:
                 table.add_column(str(key))
 
             for pet in data:
 
-                datapoints_drinking: List[Dict[str, Any]] = pet.get("drinking", {}).get(
+                datapoints_drinking: list[dict[str, Any]] = pet.get("drinking", {}).get(
                     "datapoints", []
                 )
-                datapoints_feeding: List[Dict[str, Any]] = pet.get("feeding", {}).get(
+                datapoints_feeding: list[dict[str, Any]] = pet.get("feeding", {}).get(
                     "datapoints", []
                 )
-                datapoints_movement: List[Dict[str, Any]] = pet.get("movement", {}).get(
+                datapoints_movement: list[dict[str, Any]] = pet.get("movement", {}).get(
                     "datapoints", []
                 )
 
@@ -344,7 +344,7 @@ async def report(
     "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
 )
 @coro
-async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
+async def notification(ctx: click.Context, token: str | None = None) -> None:
     """get notifications"""
 
     token = token if token else ctx.obj.get("token", None)
@@ -358,7 +358,7 @@ async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
 
             table = Table(box=box.MINIMAL)
 
-            all_keys: Set[str] = set()
+            all_keys: set[str] = set()
             all_keys.update(*[entry.keys() for entry in data])
 
             for key in all_keys:
@@ -387,7 +387,7 @@ async def notification(ctx: click.Context, token: Optional[str] = None) -> None:
 )
 @coro
 async def locking(
-    ctx: click.Context, device_id: int, mode: str, token: Optional[str] = None
+    ctx: click.Context, device_id: int, mode: str, token: str | None = None
 ) -> None:
     """lock control"""
 
@@ -395,10 +395,10 @@ async def locking(
 
     sp = Surepy(auth_token=str(token))
 
-    flap: Optional[Flap]
+    flap: Flap | None
     if (flap := await sp.flap(flap_id=device_id)) and (type(flap) == Flap):
 
-        lock_control: Optional[Callable[..., Coroutine[Any, Any, Any]]] = None
+        lock_control: Callable[..., Coroutine[Any, Any, Any]] | None = None
 
         if mode == "lock":
             lock_control = flap.lock
@@ -446,7 +446,7 @@ async def locking(
 )
 @coro
 async def position(
-    ctx: click.Context, pet_id: int, position: str, token: Optional[str] = None
+    ctx: click.Context, pet_id: int, position: str, token: str | None = None
 ) -> None:
     """set pet position"""
 
@@ -454,8 +454,8 @@ async def position(
 
     sp = Surepy(auth_token=str(token))
 
-    pet: Optional[Pet]
-    location: Optional[Location]
+    pet: Pet | None
+    location: Location | None
 
     if (pet := await sp.pet(pet_id=pet_id)) and (type(pet) == Pet):
 

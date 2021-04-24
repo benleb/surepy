@@ -8,7 +8,7 @@ The `Pet` class of surepy
 
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from surepy.entities import (
@@ -23,14 +23,14 @@ from surepy.enums import EntityType, FoodType, Location
 
 
 class Pet(SurepyEntity):
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
 
         super().__init__(data=data)
 
         self.pet_id: int = int(data["id"])
 
         self._type: EntityType = EntityType.PET
-        self._data: Dict[str, Any] = data
+        self._data: dict[str, Any] = data
 
         self._name = str(name) if (name := self._data.get("name")) else "Unnamed"
 
@@ -42,17 +42,17 @@ class Pet(SurepyEntity):
         return self.pet_id
 
     @property
-    def tag_id(self) -> Optional[int]:
+    def tag_id(self) -> int | None:
         """ID of the household the pet belongs to."""
         return int(tag_id) if (tag_id := self._data.get("tag_id")) else None
 
     @property
-    def food_type(self) -> Optional[str]:
+    def food_type(self) -> str | None:
         """Type of food."""
         return str(FoodType(type_id)) if (type_id := self._data.get("food_type_id")) else None
 
     @property
-    def updated_at(self) -> Optional[datetime]:
+    def updated_at(self) -> datetime | None:
         """Type of food."""
         return (
             datetime.fromisoformat(updated_at)
@@ -61,7 +61,7 @@ class Pet(SurepyEntity):
         )
 
     @property
-    def photo_url(self) -> Optional[str]:
+    def photo_url(self) -> str | None:
         """Picture of the Pet."""
         return (
             urlparse(photo_url).geturl()
@@ -93,7 +93,7 @@ class Pet(SurepyEntity):
         )
 
     @property
-    def feeding(self) -> Optional[StateFeeding]:
+    def feeding(self) -> StateFeeding | None:
         """Last Activity of the Pet."""
         if activity := self._data.get("status", {}).get("feeding", {}):
             return StateFeeding(
@@ -104,7 +104,7 @@ class Pet(SurepyEntity):
         return None
 
     @property
-    def drinking(self) -> Optional[StateDrinking]:
+    def drinking(self) -> StateDrinking | None:
         """Last Activity of the Pet."""
         if activity := self._data.get("status", {}).get("drinking", {}):
             return StateDrinking(
@@ -115,9 +115,9 @@ class Pet(SurepyEntity):
         return None
 
     @property
-    def last_lunch(self) -> Optional[datetime]:
+    def last_lunch(self) -> datetime | None:
         return self.feeding.at if self.feeding else None
 
     @property
-    def last_drink(self) -> Optional[datetime]:
+    def last_drink(self) -> datetime | None:
         return self.drinking.at if self.drinking else None

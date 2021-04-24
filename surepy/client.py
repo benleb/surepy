@@ -6,6 +6,8 @@ The core module of surepy
 |license-info|
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 
@@ -15,7 +17,7 @@ from http.client import HTTPException
 from logging import Logger
 from os import environ
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid1
 
 import aiohttp
@@ -72,8 +74,8 @@ def token_seems_valid(token: str) -> bool:
     )
 
 
-def find_token() -> Optional[str]:
-    token: Optional[str] = None
+def find_token() -> str | None:
+    token: str | None = None
 
     # check env token
     if (env_token := environ.get(TOKEN_ENV, None)) and token_seems_valid(token=env_token):
@@ -95,12 +97,12 @@ class SureAPIClient:
 
     def __init__(
         self,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
+        email: str | None = None,
+        password: str | None = None,
         # loop: Optional[asyncio.AbstractEventLoop] = None,
-        auth_token: Optional[str] = None,
+        auth_token: str | None = None,
         api_timeout: int = API_TIMEOUT,
-        session: Optional[aiohttp.ClientSession] = None,
+        session: aiohttp.ClientSession | None = None,
         surepy_version: str = None,
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
@@ -119,7 +121,7 @@ class SureAPIClient:
         self._surepy_version: str = surepy_version
 
         # api token management
-        self._auth_token: Optional[str] = None
+        self._auth_token: str | None = None
         if auth_token and token_seems_valid(auth_token):
             self._auth_token = auth_token
         elif token := find_token():
@@ -129,13 +131,13 @@ class SureAPIClient:
             SurePetcareAuthenticationError("sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯")
 
         # storage for received api data
-        self.resources: Dict[str, Any] = {}
+        self.resources: dict[str, Any] = {}
         # storage for etags
-        self._etags: Dict[str, str] = {}
+        self._etags: dict[str, str] = {}
 
         logger.debug("initialization completed | vars(): %s", vars())
 
-    def _generate_headers(self) -> Dict[str, str]:
+    def _generate_headers(self) -> dict[str, str]:
         """Build a HTTP header accepted by the API"""
         user_agent = (
             SUREPY_USER_AGENT.format(version=self._surepy_version) if self._surepy_version else None
@@ -155,13 +157,13 @@ class SureAPIClient:
             "X-Device-Id": self._device_id,
         }
 
-    async def get_token(self) -> Optional[str]:
+    async def get_token(self) -> str | None:
         """Get or refresh the authentication token."""
-        authentication_data: Dict[str, Optional[str]] = dict(
+        authentication_data: dict[str, str | None] = dict(
             email_address=self.email, password=self.password, device_id=self._device_id
         )
 
-        token: Optional[str] = None
+        token: str | None = None
 
         session = self._session if self._session else aiohttp.ClientSession()
 
@@ -172,7 +174,7 @@ class SureAPIClient:
 
             if raw_response.status == HTTPStatus.OK:
 
-                response: Dict[str, Any] = await raw_response.json()
+                response: dict[str, Any] = await raw_response.json()
 
                 if "data" in response and "token" in response["data"]:
                     token = self._auth_token = response["data"]["token"]
@@ -205,11 +207,10 @@ class SureAPIClient:
         self,
         method: str,
         resource: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
         second_try: bool = False,
-        session: aiohttp.ClientSession = None,
         **_: Any,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
 
         logger.debug("self._auth_token: %s", self._auth_token)
@@ -270,19 +271,19 @@ class SureAPIClient:
             if not self._session:
                 await session.close()
 
-    async def get_pets(self) -> Optional[List[Dict[str, Any]]]:
+    async def get_pets(self) -> list[dict[str, Any]] | None:
         """Retrieve the pet data/state."""
         resource = PET_RESOURCE
 
-        response_data: Optional[List[Dict[str, Any]]] = []
+        response_data: list[dict[str, Any]] | None = []
 
-        response: Optional[Dict[str, Any]] = await self.call(method="GET", resource=resource)
+        response: dict[str, Any] | None = await self.call(method="GET", resource=resource)
         if response:
             response_data = response.get("data")
 
         return response_data
 
-    async def set_pet_location(self, pet_id: int, location: Location) -> Optional[Dict[str, Any]]:
+    async def set_pet_location(self, pet_id: int, location: Location) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         resource = POSITION_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, pet_id=pet_id)
         data = {
@@ -305,23 +306,23 @@ class SureAPIClient:
 
         raise SurePetcareError(f"Setting position of {pet_id} failed!")
 
-    async def lock(self, device_id: int) -> Optional[Dict[str, Any]]:
+    async def lock(self, device_id: int) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         return await self._set_lock_state(device_id, LockState.LOCKED_ALL)
 
-    async def lock_in(self, device_id: int) -> Optional[Dict[str, Any]]:
+    async def lock_in(self, device_id: int) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         return await self._set_lock_state(device_id, LockState.LOCKED_IN)
 
-    async def lock_out(self, device_id: int) -> Optional[Dict[str, Any]]:
+    async def lock_out(self, device_id: int) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         return await self._set_lock_state(device_id, LockState.LOCKED_OUT)
 
-    async def unlock(self, device_id: int) -> Optional[Dict[str, Any]]:
+    async def unlock(self, device_id: int) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         return await self._set_lock_state(device_id, LockState.UNLOCKED)
 
-    async def _set_lock_state(self, device_id: int, mode: LockState) -> Optional[Dict[str, Any]]:
+    async def _set_lock_state(self, device_id: int, mode: LockState) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         resource = CONTROL_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id)
         data = {"locking": int(mode.value)}

@@ -7,7 +7,6 @@ ABC representing a Sure Petcare Device.
 """
 
 from abc import ABC
-from typing import Optional
 
 from surepy.const import PET_FLAP_VOLTAGE_DIFF, PET_FLAP_VOLTAGE_LOW
 from surepy.entities import SurepyEntity
@@ -22,30 +21,30 @@ class Hub(SurepyEntity):
         return bool(self._data.get("status", {}).get("online"))
 
     @property
-    def parent_id(self) -> Optional[int]:
+    def parent_id(self) -> int | None:
         return self._data.get("parent_device_id", None)
 
     @property
-    def serial(self) -> Optional[str]:
+    def serial(self) -> str | None:
         """ID of the household the pet belongs to."""
         return str(serial) if (serial := self._data.get("serial_number")) else None
 
 
 class SurepyDevice(SurepyEntity, ABC):
     @property
-    def parent_id(self) -> Optional[int]:
+    def parent_id(self) -> int | None:
         return self._data.get("parent_device_id", None)
 
     @property
-    def serial(self) -> Optional[str]:
+    def serial(self) -> str | None:
         """ID of the household the pet belongs to."""
         return str(serial) if (serial := self._data.get("serial_number")) else None
 
     @property
-    def battery_level(self) -> Optional[int]:
+    def battery_level(self) -> int | None:
         """Return battery level in percent."""
 
-        battery_percent: Optional[int]
+        battery_percent: int | None
         try:
             per_battery_voltage = self._data["status"]["battery"] / 4
             voltage_diff = per_battery_voltage - PET_FLAP_VOLTAGE_LOW

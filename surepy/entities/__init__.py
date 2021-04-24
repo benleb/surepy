@@ -1,13 +1,13 @@
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from surepy.enums import EntityType, Location
 
 
 class SurepyEntity(ABC):
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
 
         # sure petcare id
         self._id: int = int(data.get("id", data.get("_id")))
@@ -39,33 +39,33 @@ class SurepyEntity(ABC):
         return self._type
 
     @property
-    def household_id(self) -> Optional[int]:
+    def household_id(self) -> int | None:
         """ID of the household the entity belongs to."""
         return (
             int(household_id) if (household_id := self._data.get("household_id")) else None  # noqa
         )
 
-    def raw_data(self) -> Dict[str, Any]:
+    def raw_data(self) -> dict[str, Any]:
         return self._data
 
 
 @dataclass
 class StateFeeding:
-    change: List[float]
-    at: Optional[datetime]
+    change: list[float]
+    at: datetime | None
 
 
 @dataclass
 class StateDrinking:
-    change: List[float]
-    at: Optional[datetime]
+    change: list[float]
+    at: datetime | None
 
 
 @dataclass
 class PetLocationData:
 
     where: Location
-    since: Optional[datetime]
+    since: datetime | None
 
     def __str__(self) -> str:
         return self.where.name.title()

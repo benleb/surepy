@@ -6,6 +6,8 @@ Classes representing pet states.
 |license-info|
 """
 
+from __future__ import annotations
+
 from abc import ABC
 from typing import Any
 

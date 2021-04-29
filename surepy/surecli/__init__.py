@@ -6,12 +6,14 @@ The cli module of surepy
 |license-info|
 """
 
+from __future__ import annotations
+
 from aiohttp import ClientSession, TCPConnector
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from shutil import copyfile
-from surepy.enums import Location
+from surepy.enums import EntityType, Location
 from sys import exit
 from typing import Any, Callable, Coroutine
 
@@ -25,7 +27,6 @@ from surepy.entities.devices import SurepyDevice, Flap
 from surepy.entities.pet import Pet
 
 from surepy import (
-    TOKEN_ENV,
     Surepy,
     __name__ as sp_name,
     __version__ as sp_version,
@@ -47,6 +48,7 @@ old_token_file = token_file.with_suffix(".old_token")
 
 console = Console(width=120)
 
+TOKEN_ENV = "SUREPY_TOKEN"  # nosec
 CONTEXT_SETTINGS: dict[str, Any] = dict(help_option_names=["--help"])
 
 version_message = (
@@ -238,6 +240,8 @@ async def devices(ctx: click.Context, token: str | None) -> None:
         table.add_column("Household", justify="right", style="")
         table.add_column("Name", style="bold")
         table.add_column("Type", style="")
+        table.add_column("Water remaining", style="")
+        table.add_column("Water last change", style="")
         table.add_column("Serial", style="")
 
         # sorted_devices = sorted(devices, key=lambda x: int(devices[x]["household_id"]))
@@ -252,6 +256,8 @@ async def devices(ctx: click.Context, token: str | None) -> None:
                 str(device.household_id),
                 str(device.name),
                 str(device.type.name.replace("_", " ").title()),
+                str(f"{device.water_remaining}ml") if device.type == EntityType.FELAQUA else "-",
+                str(f"{device.water_change}ml") if device.type == EntityType.FELAQUA else "-",
                 str(device.serial) or "-",
             )
 
@@ -386,9 +392,7 @@ async def notification(ctx: click.Context, token: str | None = None) -> None:
     "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
 )
 @coro
-async def locking(
-    ctx: click.Context, device_id: int, mode: str, token: str | None = None
-) -> None:
+async def locking(ctx: click.Context, device_id: int, mode: str, token: str | None = None) -> None:
     """lock control"""
 
     token = token if token else ctx.obj.get("token", None)

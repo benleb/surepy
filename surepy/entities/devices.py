@@ -6,11 +6,15 @@ ABC representing a Sure Petcare Device.
 |license-info|
 """
 
+from __future__ import annotations
+
 from abc import ABC
 
 from surepy.const import PET_FLAP_VOLTAGE_DIFF, PET_FLAP_VOLTAGE_LOW
 from surepy.entities import SurepyEntity
 from surepy.enums import LockState
+
+from typing import Any
 
 
 class Hub(SurepyEntity):
@@ -62,6 +66,31 @@ class Feeder(SurepyDevice):
 
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
+
+    @property
+    def water_remaining(self) -> float | None:
+        if (water_data := self._data.get("water_data", {})) and (
+            weights := water_data.get("weights")
+        ):
+            frame = weights[0]["frames"][0]
+            water_ml = frame["current_weight"]
+            return float(water_ml)
+        else:
+            return None
+
+    @property
+    def water_change(self) -> float | None:
+        if (water_data := self._data.get("water_data", {})) and (
+            weights := water_data.get("weights")
+        ):
+            frame = weights[0]["frames"][0]
+            water_ml = frame["change"]
+            return float(water_ml)
+        else:
+            return None
+
+    def set_water_data(self, data: dict[str, Any]) -> None:
+        self._water_data = data
 
 
 class Flap(SurepyDevice):

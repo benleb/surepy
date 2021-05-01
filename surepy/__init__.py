@@ -123,6 +123,7 @@ class Surepy:
 
     @property
     def auth_token(self) -> str | None:
+        """Authentication token for device"""
         return self._auth_token
 
     # async def refresh(self) -> bool:

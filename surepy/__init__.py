@@ -201,6 +201,13 @@ class Surepy:
     async def all_actions(
         self, household_id: int, pet_id: int | None = None
     ) -> dict[int, dict[str, Any]] | None:
+        """ Args: 
+                 - household_id (int): id associated with household
+                 - pet_id (int): id associated with pet
+            returns: 
+                get all actions using pet_id and household_id from raw
+                data and output as a dictionary
+        """
         return await self.get_actions(pet_id=pet_id, household_id=household_id, only_latest=False)
 
     async def get_actions(

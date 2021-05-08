@@ -77,7 +77,7 @@ class Felaqua(SurepyDevice):
 
     @property
     def water_change(self) -> float | None:
-        if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
+        if "drink" in self._data and self._data["drink"]["weights"] and (weights := self._data["drink"]["weights"].pop()):
             return float(weights["change"])
         else:
             return None

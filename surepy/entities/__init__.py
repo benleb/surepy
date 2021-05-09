@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from pprint import pformat
+
 from surepy.enums import EntityType, Location
 
 
@@ -18,12 +20,18 @@ class SurepyEntity(ABC):
 
         self._name: str = str(self._data.get("name"))
 
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        return f"{self._type.name.capitalize()}(data={pformat(self._data)})"
+
     @property
     def id(self) -> int:
         return self._id
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         return f"{self.household_id}-{self.id}"
 
     @property

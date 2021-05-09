@@ -107,7 +107,7 @@ class Surepy:
         else:  # if token := find_token():
             self._auth_token = find_token()
 
-        self._entities: dict[int, Any] = {}
+        self._entities: dict[int, SurepyEntity] = {}
         self._pets: dict[int, Any] = {}
         self._flaps: dict[int, Any] = {}
         self._feeders: dict[int, Any] = {}
@@ -122,6 +122,7 @@ class Surepy:
 
     @property
     def auth_token(self) -> str | None:
+        """Authentication token for device"""
         return self._auth_token
 
     # async def refresh(self) -> bool:
@@ -192,6 +193,111 @@ class Surepy:
         """Fetch pet information."""
         return await self.sac.get_pets()
 
+    async def latest_actions(
+        self, household_id: int, pet_id: int | None = None
+    ) -> dict[int, dict[str, Any]] | None:
+        """
+        Args:
+            household_id (int): ID associated with household
+            pet_id (int): ID associated with pet
+
+        Returns:
+            Get the latest action using pet_id and household_id
+            from raw data and output as a dictionary
+        """
+        return await self.get_actions(pet_id=pet_id, household_id=household_id, only_latest=True)
+
+    async def all_actions(
+        self, household_id: int, pet_id: int | None = None
+    ) -> dict[int, dict[str, Any]] | None:
+        """Args:
+             - household_id (int): id associated with household
+             - pet_id (int): id associated with pet
+        returns:
+            get all actions using pet_id and household_id from raw
+            data and output as a dictionary
+        """
+        return await self.get_actions(pet_id=pet_id, household_id=household_id, only_latest=False)
+
+    async def get_actions(
+        self, household_id: int, pet_id: int | None = None, only_latest: bool = True
+    ) -> dict[int, dict[str, Any]] | None:
+        resource = f"{BASE_RESOURCE}/report/household/{household_id}"
+
+        latest_actions: dict[int, dict[str, Any]] = {}
+
+        pet_device_pairs: dict[str, Any] = (
+            await self.sac.call(method="GET", resource=resource) or {}
+        )
+
+        if "data" not in pet_device_pairs:
+            return latest_actions
+
+        data: list[dict[str, Any]] = pet_device_pairs["data"]
+
+        for pair in data:
+
+            pet_id = int(pair["pet_id"])
+            device_id = int(pair["device_id"])
+            device: SurepyDevice = self._entities[device_id]  # type: ignore
+
+            latest_actions[pet_id] = {}
+            latest_actions[pet_id] = self._entities[device_id]._data
+
+            # movement
+            if (
+                device.type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]
+                and pair["movement"]["datapoints"]
+            ):
+                latest_datapoint = pair["movement"]["datapoints"].pop()
+                # latest_actions[pet_id]["move"] = latest_datapoint
+                latest_actions[pet_id] = self._entities[device_id]._data["move"] = latest_datapoint
+
+            # feeding
+            elif (
+                device.type in [EntityType.FEEDER, EntityType.FEEDER_LITE]
+                and pair["feeding"]["datapoints"]
+            ):
+                latest_datapoint = pair["feeding"]["datapoints"].pop()
+                # latest_actions[pet_id]["lunch"] = latest_datapoint
+                latest_actions[pet_id] = self._entities[device_id]._data["lunch"] = latest_datapoint
+
+            # drinking
+            elif device.type == EntityType.FELAQUA and pair["drinking"]["datapoints"]:
+                latest_datapoint = pair["drinking"]["datapoints"].pop()
+                # latest_actions[pet_id]["drink"] = latest_datapoint
+                latest_actions[pet_id] = self._entities[device_id]._data["drink"] = latest_datapoint
+
+        return latest_actions
+
+    # async def felaqua_details(
+    #     self, device_id: int | None = None
+    # ) -> list[dict[str, Any]] | dict[str, Any] | None:
+    #     """Fetch Felaqua water level information."""
+
+    #     resource = DEVICE_TIMELINE_RESOURCE.format(
+    #         BASE_RESOURCE=BASE_RESOURCE, household_id=47839  # felaqua.household_id
+    #     )
+
+    #     timeline = await self.sac.call(method="GET", resource=resource)
+
+    #     if timeline:
+
+    #         weights_entries = [
+    #             entry for entry in timeline.get("data", []) if int(entry["type"]) == 30
+    #         ]
+
+    #         if device_id:
+    #             entry: dict[str, Any]
+    #             for entry in weights_entries:
+    #                 for device in entry["devices"]:
+    #                     if device["id"] == device_id:
+    #                         return entry
+    #         else:
+    #             return weights_entries
+
+    #     return []
+
     async def get_timeline(self) -> dict[str, Any]:
         """Retrieve the flap data/state."""
         return await self.sac.call(method="GET", resource=TIMELINE_RESOURCE) or {}
@@ -218,6 +324,15 @@ class Surepy:
     async def get_pets(self) -> list[Pet]:
         return [pet for pet in (await self.get_entities()).values() if isinstance(pet, Pet)]
 
+    async def get_device(self, device_id: int) -> SurepyDevice | None:
+        if device_id not in self._entities:
+            await self.get_entities()
+
+        if self._entities[device_id].type != EntityType.PET:
+            return self._entities[device_id]  # type: ignore
+        else:
+            return None
+
     async def get_devices(self) -> list[SurepyDevice]:
         return [
             device
@@ -228,39 +343,54 @@ class Surepy:
     async def get_entities(self, refresh: bool = False) -> dict[int, SurepyEntity]:
         """Get all Entities (Pets/Devices)"""
 
-        # if MESTART_RESOURCE not in self._resource or refresh:
-        if MESTART_RESOURCE not in self.sac.resources or refresh:
-            await self.sac.call(method="GET", resource=MESTART_RESOURCE)
+        household_ids: set[int] = set()
+        surepy_entities: dict[int, SurepyEntity] = {}
 
         raw_data: dict[str, list[dict[str, Any]]]
 
-        surepy_entities: dict[int, SurepyEntity] = {}
+        # if MESTART_RESOURCE not in self._resource or refresh:
+        if MESTART_RESOURCE not in self.sac.resources or refresh:
+            if response := await self.sac.call(method="GET", resource=MESTART_RESOURCE):
+                raw_data = response.get("data", {})
+        else:
+            raw_data = self.sac.resources[MESTART_RESOURCE].get("data", {})
 
-        if raw_data := self.sac.resources[MESTART_RESOURCE].get("data", {}):
+        # if raw_data := self.sac.resources[MESTART_RESOURCE].get("data", {}):
+        if not raw_data:
+            logger.error("could not fetch data ¯\\_(ツ)_/¯")
+            return surepy_entities
 
-            for entity in raw_data.get("devices", []) + raw_data.get("pets", []):
+        for entity in raw_data.get("devices", []) + raw_data.get("pets", []):
 
-                # key used by sure petcare in api response
-                entity_type = EntityType(int(entity.get("product_id", 0)))
-                entity_id = entity["id"]
+            # key used by sure petcare in api response
+            entity_type = EntityType(int(entity.get("product_id", 0)))
+            entity_id = entity["id"]
 
-                if entity_type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]:
-                    surepy_entities[entity_id] = Flap(data=entity)
-                elif entity_type in [EntityType.FEEDER, EntityType.FEEDER_LITE]:
-                    surepy_entities[entity_id] = Feeder(data=entity)
-                elif entity_type == EntityType.FELAQUA:
-                    surepy_entities[entity_id] = Felaqua(data=entity)
-                elif entity_type == EntityType.HUB:
-                    surepy_entities[entity_id] = Hub(data=entity)
-                elif entity_type == EntityType.PET:
-                    surepy_entities[entity_id] = Pet(data=entity)
+            if entity_type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]:
+                surepy_entities[entity_id] = Flap(data=entity)
+            elif entity_type in [EntityType.FEEDER, EntityType.FEEDER_LITE]:
+                surepy_entities[entity_id] = Feeder(data=entity)
+            elif entity_type == EntityType.FELAQUA:
+                surepy_entities[entity_id] = Felaqua(data=entity)
+            elif entity_type == EntityType.HUB:
+                surepy_entities[entity_id] = Hub(data=entity)
+            elif entity_type == EntityType.PET:
+                surepy_entities[entity_id] = Pet(data=entity)
 
-                else:
-                    logger.warning(
-                        f"unknown entity type: {entity.get('name', '-')} ({entity_type}): {entity}"
-                    )
+            else:
+                logger.warning(
+                    f"unknown entity type: {entity.get('name', '-')} ({entity_type}): {entity}"
+                )
 
-        return surepy_entities
+            household_ids.add(int(surepy_entities[entity_id].household_id))  # type: ignore
+
+            self._entities[entity_id] = surepy_entities[entity_id]
+
+        # fetch additional data about movement, feeding & drinking
+        for household_id in household_ids:
+            await self.get_actions(household_id=household_id, only_latest=True)
+
+        return self._entities
 
     # async def get_devices(self) -> dict[int, SurepyEntity]:
     #     """Retrieve the pet data/state."""

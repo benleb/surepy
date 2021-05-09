@@ -63,6 +63,20 @@ class Feeder(SurepyDevice):
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
 
+    @property
+    def water_remaining(self) -> float | None:
+        if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
+            return float(weights["weight"])
+        else:
+            return None
+
+    @property
+    def water_change(self) -> float | None:
+        if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
+            return float(weights["change"])
+        else:
+            return None
+
 
 class Flap(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""

@@ -23,6 +23,17 @@ from surepy.enums import EntityType, FoodType, Location
 
 
 class Pet(SurepyEntity):
+    """
+    Represents pet. Contains attributes of the pet.
+
+    Attributes obtained through Sure PetCare API and include
+     - pet ID (int) provided by Sure PetCare
+     - pet type default always "pet"
+     - pet data: raw output from Sure PetCare API
+     - pet name (string) name of pet
+     - pet state (integer in API, string in script), one of "outside" or "home"
+
+    """
     def __init__(self, data: dict[str, Any]):
 
         super().__init__(data=data)
@@ -34,7 +45,7 @@ class Pet(SurepyEntity):
 
         self._name = str(name) if (name := self._data.get("name")) else "Unnamed"
 
-        self.state = PetState(data["status"])
+        self.state = PetState(data["status"]) if "status" in data else "Unknown"
 
     @property
     def id(self) -> int:

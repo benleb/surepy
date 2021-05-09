@@ -6,6 +6,9 @@ The cli module of surepy
 |license-info|
 """
 
+from __future__ import annotations
+
+import json
 from aiohttp import ClientSession, TCPConnector
 from datetime import datetime
 from functools import wraps
@@ -174,6 +177,21 @@ async def pets(ctx: click.Context, token: str | None) -> None:
         sp = Surepy(auth_token=token, session=session)
 
         pets: list[Pet] = await sp.get_pets()
+
+
+        ##
+        ## JSON Output
+        ##
+
+        if ctx.obj.get("json", False):
+            for pet in pets:
+                json_str = json.dumps(pet.raw_data(), indent=4)
+                print(json_str)
+            return
+
+        ##
+        ## HUMAN READABLE
+        ##
 
         table = Table(box=box.MINIMAL)
         table.add_column("Name", style="bold")

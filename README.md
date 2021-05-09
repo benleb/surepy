@@ -2,7 +2,13 @@
 
 Library & CLI to interact with the Sure Petcare API. [**surepy**](https://github.com/benleb/surepy) lets you monitor and control the Pet Door/Cat Flap Connect 🚪 and the Pet Feeder Connect 🍽 by [Sure Petcare](https://www.surepetcare.com).
 
-[**surepy**](https://github.com/benleb/surepy) features
+---
+
+👋 **hey!** 🐾 like to run your devices **without any connection to Sure Petcare**? 📡 check out the amazing work of [@plambrechtsen](https://github.com/plambrechtsen) on his [pethublocal](https://github.com/plambrechtsen/pethublocal) project to completely reverse engineer their proprietary 802.14.5 / MiWi protocol! 👏 🥇
+
+---
+
+[**surepy**](https://github.com/benleb/surepy) features:
 
 🔑 **get an api token** with your account credentials  
 🚪 **lock/unlock** a door or flap  

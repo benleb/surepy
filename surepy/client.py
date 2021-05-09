@@ -47,6 +47,7 @@ from surepy.const import (
 )
 from surepy.enums import Location, LockState
 from surepy.exceptions import (
+    SurePetcareAPIError,
     SurePetcareAuthenticationError,
     SurePetcareConnectionError,
     SurePetcareError,
@@ -103,7 +104,7 @@ class SureAPIClient:
         auth_token: str | None = None,
         api_timeout: int = API_TIMEOUT,
         session: aiohttp.ClientSession | None = None,
-        surepy_version: str = None,
+        surepy_version: str | None = None,
     ) -> None:
         """Initialize the connection to the Sure Petcare API."""
 
@@ -118,7 +119,7 @@ class SureAPIClient:
         # connection settings
         self._api_timeout: int = api_timeout
 
-        self._surepy_version: str = surepy_version
+        self._surepy_version: str | None = surepy_version
 
         # api token management
         self._auth_token: str | None = None
@@ -189,7 +190,11 @@ class SureAPIClient:
 
             else:
                 logger.debug("Response from %s: %s", AUTH_RESOURCE, raw_response)
-                raise SurePetcareError()
+                raise SurePetcareAPIError(
+                    resource=AUTH_RESOURCE,
+                    response=raw_response,
+                    message="unknown response from sure petcare api",
+                )
 
             return token
 

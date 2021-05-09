@@ -6,6 +6,7 @@ ABC representing a Sure Petcare Device.
 |license-info|
 """
 
+from __future__ import annotations
 from abc import ABC
 
 from surepy.const import PET_FLAP_VOLTAGE_DIFF, PET_FLAP_VOLTAGE_LOW

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime
@@ -40,7 +42,7 @@ class SurepyEntity(ABC):
 
     @property
     def full_name(self) -> str:
-        return f"{self.type.name}_{self.name}"
+        return f"{self._type.name}_{self.name}"
 
     @property
     def type(self) -> EntityType:

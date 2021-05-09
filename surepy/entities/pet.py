@@ -6,6 +6,7 @@ The `Pet` class of surepy
 |license-info|
 """
 
+from __future__ import annotations
 
 from datetime import datetime
 from typing import Any

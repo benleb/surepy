@@ -47,7 +47,6 @@ from surepy.const import (
 )
 from surepy.enums import Location, LockState
 from surepy.exceptions import (
-    SurePetcareAPIError,
     SurePetcareAuthenticationError,
     SurePetcareConnectionError,
     SurePetcareError,
@@ -190,11 +189,7 @@ class SureAPIClient:
 
             else:
                 logger.debug("Response from %s: %s", AUTH_RESOURCE, raw_response)
-                raise SurePetcareAPIError(
-                    resource=AUTH_RESOURCE,
-                    response=raw_response,
-                    message="unknown response from sure petcare api",
-                )
+                raise SurePetcareError()
 
             return token
 

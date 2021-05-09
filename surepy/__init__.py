@@ -194,7 +194,7 @@ class Surepy:
         return await self.sac.get_pets()
 
     async def latest_actions(
-        self, household_id: int, pet_id: int | None = None
+        self, household_id: int
     ) -> dict[int, dict[str, Any]] | None:
         """
         Args:
@@ -205,22 +205,19 @@ class Surepy:
             Get the latest action using pet_id and household_id
             from raw data and output as a dictionary
         """
-        return await self.get_actions(pet_id=pet_id, household_id=household_id, only_latest=True)
+        return await self.get_actions(household_id=household_id)
 
     async def all_actions(
-        self, household_id: int, pet_id: int | None = None
+        self, household_id: int
     ) -> dict[int, dict[str, Any]] | None:
         """Args:
              - household_id (int): id associated with household
              - pet_id (int): id associated with pet
-        returns:
-            get all actions using pet_id and household_id from raw
-            data and output as a dictionary
         """
-        return await self.get_actions(pet_id=pet_id, household_id=household_id, only_latest=False)
+        return await self.get_actions(household_id=household_id)
 
     async def get_actions(
-        self, household_id: int, pet_id: int | None = None, only_latest: bool = True
+        self, household_id: int
     ) -> dict[int, dict[str, Any]] | None:
         resource = f"{BASE_RESOURCE}/report/household/{household_id}"
 
@@ -346,7 +343,7 @@ class Surepy:
         household_ids: set[int] = set()
         surepy_entities: dict[int, SurepyEntity] = {}
 
-        raw_data: dict[str, list[dict[str, Any]]]
+        raw_data: dict[str, list[dict[str, Any]]] = {}
 
         # if MESTART_RESOURCE not in self._resource or refresh:
         if MESTART_RESOURCE not in self.sac.resources or refresh:
@@ -388,7 +385,7 @@ class Surepy:
 
         # fetch additional data about movement, feeding & drinking
         for household_id in household_ids:
-            await self.get_actions(household_id=household_id, only_latest=True)
+            await self.get_actions(household_id=household_id)
 
         return self._entities
 

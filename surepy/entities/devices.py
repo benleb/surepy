@@ -14,9 +14,6 @@ from surepy.const import PET_FLAP_VOLTAGE_DIFF, PET_FLAP_VOLTAGE_LOW
 from surepy.entities import SurepyEntity
 from surepy.enums import LockState
 
-from typing import Any
-from pprint import pprint
-
 
 class Hub(SurepyEntity):
     """Sure Petcare Hub."""
@@ -77,7 +74,7 @@ class Felaqua(SurepyDevice):
 
     @property
     def water_change(self) -> float | None:
-        if "drink" in self._data and self._data["drink"]["weights"] and (weights := self._data["drink"]["weights"].pop()):
+        if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
             return float(weights["change"])
         else:
             return None

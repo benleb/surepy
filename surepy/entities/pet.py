@@ -46,7 +46,7 @@ class Pet(SurepyEntity):
 
         self._name = str(name) if (name := self._data.get("name")) else "Unnamed"
 
-        self.state = PetState(data["status"])
+        self.state = PetState(data["status"]) if "status" in data else "Unknown"
 
     @property
     def id(self) -> int:

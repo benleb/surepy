@@ -21,7 +21,6 @@ from surepy.client import SureAPIClient, find_token, token_seems_valid
 from surepy.const import (
     API_TIMEOUT,
     BASE_RESOURCE,
-    DEVICE_TIMELINE_RESOURCE,
     MESTART_RESOURCE,
     NOTIFICATION_RESOURCE,
     TIMELINE_RESOURCE,
@@ -198,7 +197,7 @@ class Surepy:
         self, household_id: int, pet_id: int | None = None
     ) -> dict[int, dict[str, Any]] | None:
         """
-        Args: 
+        Args:
             household_id (int): ID associated with household
             pet_id (int): ID associated with pet
 
@@ -211,12 +210,12 @@ class Surepy:
     async def all_actions(
         self, household_id: int, pet_id: int | None = None
     ) -> dict[int, dict[str, Any]] | None:
-        """ Args: 
-                 - household_id (int): id associated with household
-                 - pet_id (int): id associated with pet
-            returns: 
-                get all actions using pet_id and household_id from raw
-                data and output as a dictionary
+        """Args:
+             - household_id (int): id associated with household
+             - pet_id (int): id associated with pet
+        returns:
+            get all actions using pet_id and household_id from raw
+            data and output as a dictionary
         """
         return await self.get_actions(pet_id=pet_id, household_id=household_id, only_latest=False)
 
@@ -246,13 +245,19 @@ class Surepy:
             latest_actions[pet_id] = self._entities[device_id]._data
 
             # movement
-            if device.type in [EntityType.CAT_FLAP, EntityType.PET_FLAP] and pair["movement"]["datapoints"]:
+            if (
+                device.type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]
+                and pair["movement"]["datapoints"]
+            ):
                 latest_datapoint = pair["movement"]["datapoints"].pop()
                 # latest_actions[pet_id]["move"] = latest_datapoint
                 latest_actions[pet_id] = self._entities[device_id]._data["move"] = latest_datapoint
 
             # feeding
-            elif device.type in [EntityType.FEEDER, EntityType.FEEDER_LITE] and pair["feeding"]["datapoints"]:
+            elif (
+                device.type in [EntityType.FEEDER, EntityType.FEEDER_LITE]
+                and pair["feeding"]["datapoints"]
+            ):
                 latest_datapoint = pair["feeding"]["datapoints"].pop()
                 # latest_actions[pet_id]["lunch"] = latest_datapoint
                 latest_actions[pet_id] = self._entities[device_id]._data["lunch"] = latest_datapoint

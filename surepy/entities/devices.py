@@ -8,10 +8,11 @@ ABC representing a Sure Petcare Device.
 
 from __future__ import annotations
 from abc import ABC
+from typing import Any
 
 from surepy.const import PET_FLAP_VOLTAGE_DIFF, PET_FLAP_VOLTAGE_LOW
 from surepy.entities import SurepyEntity
-from surepy.enums import LockState
+from surepy.enums import BowlPosition, FoodType, LockState
 
 
 class Hub(SurepyEntity):
@@ -57,17 +58,89 @@ class SurepyDevice(SurepyEntity, ABC):
         return battery_percent
 
 
+class FeederBowl:
+    """Sure Petcare Felaqua."""
+
+    def __init__(self, data: dict[str, int | float | str], feeder: Feeder):
+        """Initialize a Sure Petcare sensor."""
+
+        self._data: dict[str, int | float | str] = data
+        self.name = f"{feeder.name} Bowl {self._data['index']}"
+
+    @property
+    def weight(self) -> float | None:
+        return float(self._data["weight"]) if "weight" in self._data else None
+
+    @property
+    def change(self) -> float | None:
+        return float(self._data["change"]) if "change" in self._data else None
+
+    @property
+    def target(self) -> int | None:
+        return int(self._data["target"]) if "target" in self._data else None
+
+    @property
+    def index(self) -> int | None:
+        return int(self._data["index"]) if "index" in self._data else None
+
+    @property
+    def food_type_id(self) -> int | None:
+        return int(self._data["food_type_id"]) if "food_type_id" in self._data else None
+
+    @property
+    def food_type(self) -> str | None:
+        return FoodType(self.food_type_id).name.capitalize() if self.food_type_id else None
+
+    @property
+    def position(self) -> str | None:
+        return BowlPosition(self.index).name.capitalize() if self.index else None
+
+    def raw_data(self) -> dict[str, int | float | str]:
+        return self._data
+
+
 class Feeder(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
+
+    def __init__(self, data: dict[str, Any]):
+        """Initialize a Sure Petcare sensor."""
+        super().__init__(data)
+
+        self.bowls: dict[int, FeederBowl] = {}
+
+        self.add_bowls()
+
+    @property
+    def bowl_count(self) -> int:
+        return len(self.bowls)
+
+    @property
+    def total_weight(self) -> float:
+        return sum([bowl.weight or 0.0 for bowl in self.bowls.values() if bowl.weight > 0.0])
+
+    def add_bowls(self) -> None:
+        if lunch := self._data.get("lunch"):
+            for bowl in lunch.get("weights", []):
+                self.bowls[bowl["index"]] = FeederBowl(data=bowl, feeder=self)
 
 
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
 
+    # @property
+    # def water_remaining(self) -> float | None:
+    #     # if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
+    #     if "drink" in self._data and (weights := self._data["drink"].get("actual_weight")):
+    #         # return float(weights["weight"])
+    #         return float(weights)
+    #     else:
+    #         return None
+
     @property
     def water_remaining(self) -> float | None:
-        if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
-            return float(weights["weight"])
+        if drink := self._data.get("drink"):
+            weights = drink.get("actual_weight", drink.get("weights").pop())
+            return float(weights)
         else:
             return None
 

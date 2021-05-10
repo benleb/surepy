@@ -58,3 +58,10 @@ class BowlPosition(SureEnum):
     LEFT = 0
     RIGHT = 1
 
+
+# animal related
+class Species(SureEnum):
+    """Sure Feeder Bowl side."""
+
+    CAT = 1
+    DOG = 2

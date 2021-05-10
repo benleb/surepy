@@ -28,7 +28,7 @@ classifiers = [
 [tool.poetry.dependencies]
 aiohttp = { extras = ["speedups"], version = "^3.6.3" }
 async-timeout = "^3.0.1"
-attrs = "^20.3.0"
+attrs = ">=20.3,<22.0"
 click = "^7.1.2"
 colorama = "^0.4.4"
 halo = ">=0.0.30,<0.0.32"

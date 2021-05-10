@@ -50,3 +50,11 @@ class FoodType(SureEnum):
     DRY = 2
     BOTH = 3
     UNKNOWN = -1
+
+
+class BowlPosition(SureEnum):
+    """Sure Feeder Bowl side."""
+
+    LEFT = 0
+    RIGHT = 1
+

@@ -16,6 +16,8 @@ PET_RESOURCE: str = f"{BASE_RESOURCE}/pet?with%5B%5D=photo&with%5B%5D=breed&with
 DEVICE_RESOURCE: str = f"{BASE_RESOURCE}/device?with%5B%5D=children&with%5B%5D=tags&with%5B%5D=control&with%5B%5D=status"
 CONTROL_RESOURCE: str = "{BASE_RESOURCE}/device/{device_id}/control"
 POSITION_RESOURCE: str = "{BASE_RESOURCE}/pet/{pet_id}/position"
+ATTRIBUTES_RESOURCE: str = f"{BASE_RESOURCE}/start"
+
 
 API_TIMEOUT = 45
 

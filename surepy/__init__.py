@@ -20,6 +20,7 @@ import aiohttp
 from surepy.client import SureAPIClient, find_token, token_seems_valid
 from surepy.const import (
     API_TIMEOUT,
+    ATTRIBUTES_RESOURCE as ATTR_RESOURCE,
     BASE_RESOURCE,
     MESTART_RESOURCE,
     NOTIFICATION_RESOURCE,
@@ -113,6 +114,10 @@ class Surepy:
         self._feeders: dict[int, Any] = {}
         self._hubs: dict[int, Any] = {}
 
+        self._breeds: dict[int, dict[int, Any]] = {}
+        self._species_breeds: dict[int, dict[int, Any]] = {}
+        self._conditions: dict[int, Any] = {}
+
         # storage for received api data
         self._resource: dict[str, Any] = {}
         # storage for etags
@@ -193,9 +198,7 @@ class Surepy:
         """Fetch pet information."""
         return await self.sac.get_pets()
 
-    async def latest_actions(
-        self, household_id: int
-    ) -> dict[int, dict[str, Any]] | None:
+    async def latest_actions(self, household_id: int) -> dict[int, dict[str, Any]] | None:
         """
         Args:
             household_id (int): ID associated with household
@@ -207,18 +210,14 @@ class Surepy:
         """
         return await self.get_actions(household_id=household_id)
 
-    async def all_actions(
-        self, household_id: int
-    ) -> dict[int, dict[str, Any]] | None:
+    async def all_actions(self, household_id: int) -> dict[int, dict[str, Any]] | None:
         """Args:
-             - household_id (int): id associated with household
-             - pet_id (int): id associated with pet
+        - household_id (int): id associated with household
+        - pet_id (int): id associated with pet
         """
         return await self.get_actions(household_id=household_id)
 
-    async def get_actions(
-        self, household_id: int
-    ) -> dict[int, dict[str, Any]] | None:
+    async def get_actions(self, household_id: int) -> dict[int, dict[str, Any]] | None:
         resource = f"{BASE_RESOURCE}/report/household/{household_id}"
 
         latest_actions: dict[int, dict[str, Any]] = {}
@@ -337,6 +336,27 @@ class Surepy:
             if isinstance(device, SurepyDevice)
         ]
 
+    async def get_attributes(self) -> dict[str, Any] | None:
+        # fetch additional data from sure petcare
+        attributes: dict[str, Any] | None = None
+
+        if (raw_data := (await self.sac.call(method="GET", resource=ATTR_RESOURCE))) and (
+            attributes := raw_data.get("data")
+        ):
+
+            for breed in attributes.get("breed", {}):
+                self._breeds[breed["id"]] = breed["name"]
+
+                if breed["species_id"] not in self._breeds:
+                    self._species_breeds[breed["species_id"]] = {}
+
+                self._species_breeds[breed["species_id"]][breed["id"]] = breed["name"]
+
+            for condition in attributes.get("condition", {}):
+                self._conditions[condition["id"]] = condition["name"]
+
+        return attributes
+
     async def get_entities(self, refresh: bool = False) -> dict[int, SurepyEntity]:
         """Get all Entities (Pets/Devices)"""
 
@@ -345,19 +365,22 @@ class Surepy:
 
         raw_data: dict[str, list[dict[str, Any]]] = {}
 
-        # if MESTART_RESOURCE not in self._resource or refresh:
+        # get data like species, breed, conditions
+        # await self.get_attributes()
+
         if MESTART_RESOURCE not in self.sac.resources or refresh:
             if response := await self.sac.call(method="GET", resource=MESTART_RESOURCE):
                 raw_data = response.get("data", {})
         else:
             raw_data = self.sac.resources[MESTART_RESOURCE].get("data", {})
 
-        # if raw_data := self.sac.resources[MESTART_RESOURCE].get("data", {}):
         if not raw_data:
             logger.error("could not fetch data ¯\\_(ツ)_/¯")
             return surepy_entities
 
-        for entity in raw_data.get("devices", []) + raw_data.get("pets", []):
+        all_entities = raw_data.get("devices", []) + raw_data.get("pets", [])
+
+        for entity in all_entities:
 
             # key used by sure petcare in api response
             entity_type = EntityType(int(entity.get("product_id", 0)))
@@ -387,38 +410,11 @@ class Surepy:
         for household_id in household_ids:
             await self.get_actions(household_id=household_id)
 
+        # stupid idea, fix this
+        [
+            feeder.add_bowls()
+            for feeder in surepy_entities.values()
+            if feeder.type == EntityType.FEEDER
+        ]
+
         return self._entities
-
-    # async def get_devices(self) -> dict[int, SurepyEntity]:
-    #     """Retrieve the pet data/state."""
-
-    #     devices: dict[int, SurepyEntity] = {}
-
-    #     response: Optional[dict[str, Any]] = await self.sac.call(
-    #         method="GET", resource=DEVICE_RESOURCE
-    #     )
-
-    #     if data := response.get("data"):
-
-    #         for raw_entity in data:
-
-    #             entity_type: Optional[EntityType] = None
-
-    #             # key used by sure petcare in api response
-    #             try:
-    #                 entity_type = EntityType(int(raw_entity.get("product_id")))
-    #             except Exception as error:
-    #                 logger.error(f"error reading entity properties from response: {error}")
-
-    #             if entity_type and (entity_id := raw_entity.get("id")):
-
-    #                 if entity_type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]:
-    #                     devices[entity_id] = Flap(data=raw_entity)
-    #                 if entity_type in [EntityType.FEEDER, EntityType.FEEDER_LITE]:
-    #                     devices[entity_id] = Feeder(data=raw_entity)
-    #                 if entity_type == EntityType.FELAQUA:
-    #                     devices[entity_id] = Felaqua(data=raw_entity)
-    #                 elif entity_type == EntityType.HUB:
-    #                     devices[entity_id] = Hub(data=raw_entity)
-
-    #     return devices

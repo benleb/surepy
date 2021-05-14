@@ -213,7 +213,10 @@ class SureAPIClient:
     ) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
 
-        logger.debug("self._auth_token: %s", self._auth_token)
+        logger.debug("🐾 %s call to: %s", method, resource)
+        if data:
+            logger.debug("🐾   with data: %s", data)
+
         if not self._auth_token:
             self._auth_token = await self.get_token()
 
@@ -231,7 +234,7 @@ class SureAPIClient:
                 # use etag if available
                 if resource in self._etags:
                     headers[ETAG] = str(self._etags.get(resource))
-                    logger.debug("using available etag '%s' in headers: %s", ETAG, headers)
+                    logger.debug("🐾   using available etag '%s'", headers[ETAG])
 
                 await session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await session.request(

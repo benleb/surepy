@@ -33,6 +33,8 @@ class Hub(SurepyEntity):
 
 
 class SurepyDevice(SurepyEntity, ABC):
+    """Abstract Surepy base device"""
+
     @property
     def parent_id(self) -> int | None:
         return self._data.get("parent_device_id", None)
@@ -65,15 +67,19 @@ class FeederBowl:
         """Initialize a Sure Petcare sensor."""
 
         self._data: dict[str, int | float | str] = data
-        self.name = f"{feeder.name} Bowl {self._data['index']}"
+        self._name = f"{feeder.name} Bowl {self._data['index']}"
 
     @property
-    def weight(self) -> float | None:
-        return float(self._data["weight"]) if "weight" in self._data else None
+    def name(self) -> str:
+        return self._name
 
     @property
-    def change(self) -> float | None:
-        return float(self._data["change"]) if "change" in self._data else None
+    def weight(self) -> float:
+        return float(self._data["weight"])
+
+    @property
+    def change(self) -> float:
+        return float(self._data["change"])
 
     @property
     def target(self) -> int | None:
@@ -127,29 +133,27 @@ class Feeder(SurepyDevice):
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
 
-    # @property
-    # def water_remaining(self) -> float | None:
-    #     # if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
-    #     if "drink" in self._data and (weights := self._data["drink"].get("actual_weight")):
-    #         # return float(weights["weight"])
-    #         return float(weights)
-    #     else:
-    #         return None
-
     @property
     def water_remaining(self) -> float | None:
-        if drink := self._data.get("drink"):
-            weights = drink.get("actual_weight", drink.get("weights").pop())
-            return float(weights)
-        else:
-            return None
+        remaining = None
+
+        try:
+            remaining = float(self._data["latest_drink"]["remaining"])
+        except (KeyError, TypeError):
+            pass
+
+        return remaining
 
     @property
     def water_change(self) -> float | None:
-        if "drink" in self._data and (weights := self._data["drink"]["weights"].pop()):
-            return float(weights["change"])
-        else:
-            return None
+        change = None
+
+        try:
+            change = float(self._data["latest_drink"]["change"])
+        except (KeyError, TypeError):
+            pass
+
+        return change
 
 
 class Flap(SurepyDevice):

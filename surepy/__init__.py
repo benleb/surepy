@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import logging
 
+
+from datetime import datetime
 from importlib.metadata import version
 from logging import Logger
 from typing import Any
@@ -22,6 +24,7 @@ from surepy.const import (
     API_TIMEOUT,
     ATTRIBUTES_RESOURCE as ATTR_RESOURCE,
     BASE_RESOURCE,
+    HOUSEHOLD_TIMELINE_RESOURCE,
     MESTART_RESOURCE,
     NOTIFICATION_RESOURCE,
     TIMELINE_RESOURCE,
@@ -266,33 +269,44 @@ class Surepy:
 
         return latest_actions
 
-    # async def felaqua_details(
-    #     self, device_id: int | None = None
-    # ) -> list[dict[str, Any]] | dict[str, Any] | None:
-    #     """Fetch Felaqua water level information."""
+    async def get_latest_anonymous_drinks(self, household_id: int) -> dict[int, Any] | None:
 
-    #     resource = DEVICE_TIMELINE_RESOURCE.format(
-    #         BASE_RESOURCE=BASE_RESOURCE, household_id=47839  # felaqua.household_id
-    #     )
+        latest_drink: dict[str, float | str | datetime] = {}
 
-    #     timeline = await self.sac.call(method="GET", resource=resource)
+        felaqua_related_entries: list[dict[str, Any]] = list(
+            filter(
+                lambda x: x["type"] in [29, 30, 34], await self.get_household_timeline(household_id)
+            )
+        )
 
-    #     if timeline:
+        try:
+            device_id = felaqua_related_entries[0]["weights"][0]["device_id"]
+            latest_entry_frame = felaqua_related_entries[0]["weights"][0]["frames"][0]
+            remaining = latest_entry_frame["current_weight"]
+            change = latest_entry_frame["change"]
+            updated_at = latest_entry_frame["updated_at"]
+            latest_drink = {"remaining": remaining, "change": change, "date": updated_at}
 
-    #         weights_entries = [
-    #             entry for entry in timeline.get("data", []) if int(entry["type"]) == 30
-    #         ]
+            self._entities[device_id]._data["latest_drink"] = latest_drink
 
-    #         if device_id:
-    #             entry: dict[str, Any]
-    #             for entry in weights_entries:
-    #                 for device in entry["devices"]:
-    #                     if device["id"] == device_id:
-    #                         return entry
-    #         else:
-    #             return weights_entries
+        except (KeyError, TypeError):
+            logger.warning("no water remaining/change found in: %s", felaqua_related_entries)
 
-    #     return []
+        return latest_drink
+
+    async def get_household_timeline(
+        self, household_id: int | None = None
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
+        """Fetch Felaqua water level information."""
+
+        resource = HOUSEHOLD_TIMELINE_RESOURCE.format(
+            BASE_RESOURCE=BASE_RESOURCE, household_id=household_id
+        )
+
+        if timeline := await self.sac.call(method="GET", resource=resource):
+            return timeline.get("data", [])
+
+        return []
 
     async def get_timeline(self) -> dict[str, Any]:
         """Retrieve the flap data/state."""
@@ -361,6 +375,7 @@ class Surepy:
         """Get all Entities (Pets/Devices)"""
 
         household_ids: set[int] = set()
+        felaqua_household_ids: set[int] = set()
         surepy_entities: dict[int, SurepyEntity] = {}
 
         raw_data: dict[str, list[dict[str, Any]]] = {}
@@ -392,6 +407,7 @@ class Surepy:
                 surepy_entities[entity_id] = Feeder(data=entity)
             elif entity_type == EntityType.FELAQUA:
                 surepy_entities[entity_id] = Felaqua(data=entity)
+                felaqua_household_ids.add(int(surepy_entities[entity_id].household_id))
             elif entity_type == EntityType.HUB:
                 surepy_entities[entity_id] = Hub(data=entity)
             elif entity_type == EntityType.PET:
@@ -409,6 +425,8 @@ class Surepy:
         # fetch additional data about movement, feeding & drinking
         for household_id in household_ids:
             await self.get_actions(household_id=household_id)
+        for household_id in felaqua_household_ids:
+            await self.get_latest_anonymous_drinks(household_id=household_id)
 
         # stupid idea, fix this
         [

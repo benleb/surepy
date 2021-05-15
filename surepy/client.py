@@ -242,6 +242,7 @@ class SureAPIClient:
                 )
 
                 if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
+                    logger.debug("🐾   %d: got new data", response.status)
 
                     self.resources[resource] = response_data = await response.json()
 
@@ -250,10 +251,10 @@ class SureAPIClient:
 
                 elif response.status == HTTPStatus.NOT_MODIFIED:
                     # Etag header matched, no new data available
-                    pass
+                    logger.debug("🐾   %d: etag matched - no new data available", response.status)
 
                 elif response.status == HTTPStatus.UNAUTHORIZED:
-                    logger.debug("AuthenticationError! Try: %s: %s", second_try, response)
+                    logger.error("🐾   %d: authentication failed: %s", response.status, response)
                     self._auth_token = None
                     if not second_try:
                         token_refreshed = self.get_token()
@@ -263,7 +264,7 @@ class SureAPIClient:
                     raise SurePetcareAuthenticationError()
 
                 else:
-                    logger.info(f"Response from {resource}:\n{response}")
+                    logger.info("🐾   %d: unknown response: %s", response.status, response)
 
                 return response_data
 

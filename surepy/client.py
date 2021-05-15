@@ -23,7 +23,7 @@ from uuid import uuid1
 import aiohttp
 import async_timeout
 
-from surepy.const import (
+from .const import (
     ACCEPT,
     ACCEPT_ENCODING,
     ACCEPT_LANGUAGE,
@@ -45,8 +45,8 @@ from surepy.const import (
     SUREPY_USER_AGENT,
     USER_AGENT,
 )
-from surepy.enums import Location, LockState
-from surepy.exceptions import (
+from .enums import Location, LockState
+from .exceptions import (
     SurePetcareAuthenticationError,
     SurePetcareConnectionError,
     SurePetcareError,
@@ -195,10 +195,10 @@ class SureAPIClient:
 
         except asyncio.TimeoutError as error:
             logger.debug("Timeout while calling %s: %s", AUTH_RESOURCE, error)
-            raise SurePetcareConnectionError()
+            raise SurePetcareConnectionError() from error
         except (aiohttp.ClientError, AttributeError) as error:
             logger.debug("Failed to fetch %s: %s", AUTH_RESOURCE, error)
-            raise SurePetcareError()
+            raise SurePetcareError() from error
         finally:
             if not self._session:
                 await session.close()
@@ -221,7 +221,7 @@ class SureAPIClient:
             self._auth_token = await self.get_token()
 
         if method not in ["GET", "PUT", "POST"]:
-            raise HTTPException("unknown http method: %d", str(method))
+            raise HTTPException(f"unknown http method: {method}")
 
         response_data = None
 
@@ -268,9 +268,9 @@ class SureAPIClient:
 
                 return response_data
 
-        except (asyncio.TimeoutError, aiohttp.ClientError):
+        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
             logger.error("Can not load data from %s", resource)
-            raise SurePetcareConnectionError()
+            raise SurePetcareConnectionError() from error
         finally:
             if not self._session:
                 await session.close()

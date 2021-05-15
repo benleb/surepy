@@ -5,7 +5,7 @@ class SureEnum(IntEnum):
     """Sure base enum."""
 
     def __str__(self) -> str:
-        return self.name.title()
+        return self.name.title()  # pylint: disable=no-member
 
 
 class EntityType(SureEnum):

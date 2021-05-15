@@ -20,7 +20,6 @@ from typing import Any, Callable, Coroutine
 
 import click
 
-from halo import Halo
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -141,18 +140,15 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
 
     surepy_token: str | None = None
 
-    with Halo(text="fetching token", spinner="dots", color="magenta") as spinner:
-        async with ClientSession(connector=TCPConnector(ssl=False)) as session:
-            sp = Surepy(email=user, password=password, session=session)
+    async with ClientSession(connector=TCPConnector(ssl=False)) as session:
+        sp = Surepy(email=user, password=password, session=session)
 
-            if surepy_token := await sp.sac.get_token():
+        if surepy_token := await sp.sac.get_token():
 
-                spinner.succeed("token received!")
+            if token_file.exists() and surepy_token != token_file.read_text(encoding="utf-8"):
+                copyfile(token_file, old_token_file)
 
-                if token_file.exists() and token != token_file.read_text(encoding="utf-8"):
-                    copyfile(token_file, old_token_file)
-
-                token_file.write_text(surepy_token, encoding="utf-8")
+            token_file.write_text(surepy_token, encoding="utf-8")
 
         # await sp.sac.close_session()
 
@@ -177,7 +173,6 @@ async def pets(ctx: click.Context, token: str | None) -> None:
         sp = Surepy(auth_token=token, session=session)
 
         pets: list[Pet] = await sp.get_pets()
-
 
         ##
         ## JSON Output
@@ -404,9 +399,7 @@ async def notification(ctx: click.Context, token: str | None = None) -> None:
     "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
 )
 @coro
-async def locking(
-    ctx: click.Context, device_id: int, mode: str, token: str | None = None
-) -> None:
+async def locking(ctx: click.Context, device_id: int, mode: str, token: str | None = None) -> None:
     """lock control"""
 
     token = token if token else ctx.obj.get("token", None)
@@ -434,18 +427,14 @@ async def locking(
             return
 
         if lock_control:
-            with Halo(
-                text=f"setting {flap.name} to '{state}'", spinner="dots", color="red"
-            ) as spinner:
+            console.print(f"setting {flap.name} to '{state}'...")
 
-                if await lock_control(device_id=device_id) and (
-                    device := await sp.flap(flap_id=device_id)
-                ):
-                    spinner.succeed(f"{device.name} set to '{state}' 🐾")
-                else:
-                    spinner.fail(
-                        f"setting to '{state}' probably worked but something else is fishy...!"
-                    )
+            if await lock_control(device_id=device_id) and (
+                device := await sp.flap(flap_id=device_id)
+            ):
+                console.print(f"✅ {device.name} set to '{state}' 🐾")
+            else:
+                console.print(f"❌ setting to '{state}' may have worked but something is fishy..!")
 
         # await sp.sac.close_session()
 

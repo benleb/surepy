@@ -49,11 +49,9 @@ class SurepyEntity(ABC):
         return self._type
 
     @property
-    def household_id(self) -> int | None:
+    def household_id(self) -> int:
         """ID of the household the entity belongs to."""
-        return (
-            int(household_id) if (household_id := self._data.get("household_id")) else None  # noqa
-        )
+        return int(self._data["household_id"])
 
     def raw_data(self) -> dict[str, Any]:
         return self._data

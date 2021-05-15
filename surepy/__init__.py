@@ -133,70 +133,6 @@ class Surepy:
         """Authentication token for device"""
         return self._auth_token
 
-    # async def refresh(self) -> bool:
-    #     """Get ..."""
-    #     return await self.sac.get_entities(EntityType.DEVICES) and await self.get_entities(
-    #         EntityType.DEVICES
-    #     )
-    #     # return bool(await self.refresh_entities())
-
-    # @property
-    # def devices(self) -> Set[SurepyDevice]:
-    #     """Get all Devices"""
-    #     all_devices = set()
-    #     all_devices.update(self.flaps)
-    #     all_devices.update(self.hubs)
-    #     return all_devices
-
-    # def device(self, device_id: int) -> Optional[Union[SurepyDevice, Flap]]:
-    #     """Get a Device by its Id"""
-    #     return self.devices.get(device_id, None)
-    #
-    # @property
-    # def feeders(self) -> dict[int, Any]:
-    #     """Get all Feeders"""
-    #     return {dev.id: dev for dev in self._devices.values() if dev.type in [EntityType.FEEDER]}
-    #
-    # def feeder(self, feeder_id: int) -> Optional[dict[int, Any]]:
-    #     """Get a Feeder by its Id"""
-    #     return self.feeders.get(feeder_id)
-
-    # @property
-    # def flaps(self) -> Set[Flap]:
-    #     """Get all Flaps"""
-    #     return {
-    #         dev.id: dev
-    #         for dev in self._flaps.values()
-    #         if dev.type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]
-    #     }
-    #
-    # def flap(self, flap_id: int) -> Optional[Flap]:
-    #     """Get a Flap by its Id"""
-    #     return self.flaps.get(flap_id)
-
-    # @property
-    # def hubs(self) -> dict[int, Any]:
-    #     """Get all Hubs"""
-    #     hubs = {}
-    #     for device in self._hubs.values():
-    #         if device.type == EntityType.HUB:
-    #             hubs[device.id] = device
-    #
-    #     return hubs
-    #
-    # def hub(self, hub_id: int) -> dict[str, Any]:
-    #     """Get a Hub by its Id"""
-    #     return self.hubs.get(hub_id, {})
-
-    # @property
-    # def pets(self) -> dict[int, Pet]:
-    #     """Get all Pets"""
-    #     return self._pets
-    #
-    # def pet(self, pet_id: int) -> Pet:
-    #     """Get a Pet by its Id"""
-    #     return self.pets.get(pet_id)
-
     async def pets_details(self) -> list[dict[str, Any]] | None:
         """Fetch pet information."""
         return await self.sac.get_pets()
@@ -269,13 +205,14 @@ class Surepy:
 
         return latest_actions
 
-    async def get_latest_anonymous_drinks(self, household_id: int) -> dict[int, Any] | None:
+    async def get_latest_anonymous_drinks(self, household_id: int) -> dict[str, Any] | None:
 
         latest_drink: dict[str, float | str | datetime] = {}
 
         felaqua_related_entries: list[dict[str, Any]] = list(
             filter(
-                lambda x: x["type"] in [29, 30, 34], await self.get_household_timeline(household_id)
+                lambda x: x["type"] in [29, 30, 34],  # type: ignore
+                await self.get_household_timeline(household_id),  # type: ignore
             )
         )
 
@@ -418,7 +355,7 @@ class Surepy:
                     f"unknown entity type: {entity.get('name', '-')} ({entity_type}): {entity}"
                 )
 
-            household_ids.add(int(surepy_entities[entity_id].household_id))  # type: ignore
+            household_ids.add(surepy_entities[entity_id].household_id)
 
             self._entities[entity_id] = surepy_entities[entity_id]
 
@@ -429,8 +366,8 @@ class Surepy:
             await self.get_latest_anonymous_drinks(household_id=household_id)
 
         # stupid idea, fix this
-        [
-            feeder.add_bowls()
+        _ = [
+            feeder.add_bowls()  # type: ignore
             for feeder in surepy_entities.values()
             if feeder.type == EntityType.FEEDER
         ]

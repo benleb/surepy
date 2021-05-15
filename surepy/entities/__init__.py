@@ -20,7 +20,7 @@ class SurepyEntity(ABC):
         self._data = data
         self._type = EntityType(int(data.get("product_id", 0)))
 
-        self._name: str = str(self._data.get("name"))
+        self._name: str | None = self._data.get("name", None)
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -37,7 +37,7 @@ class SurepyEntity(ABC):
         return f"{self.household_id}-{self.id}"
 
     @property
-    def name(self) -> str:
+    def name(self) -> str | None:
         return self._name
 
     @property

@@ -140,6 +140,7 @@ class Feeder(SurepyDevice):
         """Icon of the Felaqua."""
         return urlparse("https://surehub.io/assets/images/feeder-left-menu.png").geturl()
 
+
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
 
@@ -185,4 +186,14 @@ class Flap(SurepyDevice):
     @property
     def icon(self) -> str | None:
         """Icon of the Pet/Cap Flap."""
-        return urlparse("https://surehub.io/assets/images/petdoor-left-menu.png").geturl()
+
+        icon_url = "https://surehub.io/assets/images/petdoor-left-menu.png"
+
+        if self.state == LockState.LOCKED_ALL:
+            icon_url = "https://surehub.io/assets/images/both-ways-icon.svg"
+        elif self.state == LockState.LOCKED_IN:
+            icon_url = "https://surehub.io/assets/images/inside-icon.svg"
+        elif self.state == LockState.LOCKED_OUT:
+            icon_url = "https://surehub.io/assets/images/outside-icon.svg"
+
+        return urlparse(icon_url).geturl()

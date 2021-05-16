@@ -35,6 +35,7 @@ class Pet(SurepyEntity):
      - pet state (integer in API, string in script), one of "outside" or "home"
 
     """
+
     def __init__(self, data: dict[str, Any]):
 
         super().__init__(data=data)
@@ -75,11 +76,13 @@ class Pet(SurepyEntity):
     @property
     def photo_url(self) -> str | None:
         """Picture of the Pet."""
-        return (
-            urlparse(photo_url).geturl()
+        picture_url = (
+            photo_url
             if (photo_url := self._data.get("photo", {}).get("location"))
-            else None
+            else "https://surehub.io/assets/images/no-pet-pic-dark.svg"
         )
+
+        return urlparse(picture_url).geturl()
 
     @property
     def at_home(self) -> bool:

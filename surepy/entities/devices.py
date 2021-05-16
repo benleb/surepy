@@ -9,6 +9,7 @@ ABC representing a Sure Petcare Device.
 from __future__ import annotations
 from abc import ABC
 from typing import Any
+from urllib.parse import urlparse
 
 from surepy.const import PET_FLAP_VOLTAGE_DIFF, PET_FLAP_VOLTAGE_LOW
 from surepy.entities import SurepyEntity
@@ -30,6 +31,11 @@ class Hub(SurepyEntity):
     def serial(self) -> str | None:
         """ID of the household the pet belongs to."""
         return str(serial) if (serial := self._data.get("serial_number")) else None
+
+    @property
+    def icon(self) -> str | None:
+        """Picture of the Pet."""
+        return urlparse("https://surehub.io/assets/images/hub-icon.svg").geturl()
 
 
 class SurepyDevice(SurepyEntity, ABC):
@@ -129,6 +135,10 @@ class Feeder(SurepyDevice):
             for bowl in lunch.get("weights", []):
                 self.bowls[bowl["index"]] = FeederBowl(data=bowl, feeder=self)
 
+    @property
+    def icon(self) -> str | None:
+        """Icon of the Felaqua."""
+        return urlparse("https://surehub.io/assets/images/feeder-left-menu.png").geturl()
 
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
@@ -155,6 +165,11 @@ class Felaqua(SurepyDevice):
 
         return change
 
+    @property
+    def icon(self) -> str | None:
+        """Icon of the Felaqua."""
+        return urlparse("https://surehub.io/assets/images/poseidon-left-menu.png").geturl()
+
 
 class Flap(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
@@ -166,3 +181,8 @@ class Flap(SurepyDevice):
     @property
     def unlocked(self) -> bool:
         return self.state in [LockState.UNLOCKED, LockState.CURFEW_UNLOCKED]
+
+    @property
+    def icon(self) -> str | None:
+        """Icon of the Pet/Cap Flap."""
+        return urlparse("https://surehub.io/assets/images/petdoor-left-menu.png").geturl()

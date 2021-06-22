@@ -5,6 +5,7 @@ Library & CLI to interact with the Sure Petcare API. [**surepy**](https://github
 ---
 
 # Naming confusion for *surepetcarebeta* users 🐾 🤪 🤦
+
 Sorry for the bad naming and resulting confusion and chaos 🙄 To "fix" this, I will do a rename of the *sureha* integration (formerly *surepetcarebeta*). If you are a user of the *surepetcarebeta* integration you will have to do some manual work to update your setup (row 3). I will post an update with an "upgrade path" until 1. july, please do not try to update the integration in the meantime ツ
 | Old Name / Repo | Name | Repo | Type | Description | Need Help?
 |---|---|---|---|---|---|---|

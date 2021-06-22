@@ -41,7 +41,7 @@ flake8 = "^3.8.4"
 isort = "^5.9.1"
 pycodestyle = "^2.6.0"
 pytest = "^6.2.1"
-pytest-cov = "^2.10.1"
+pytest-cov = "^2.12.1"
 
 [tool.poetry.scripts]
 surepy = 'surepy.surecli:cli'

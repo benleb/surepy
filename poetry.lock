@@ -86,7 +86,7 @@ stevedore = ">=1.20.0"
 
 [[package]]
 name = "black"
-version = "21.5b1"
+version = "21.6b0"
 description = "The uncompromising code formatter."
 category = "dev"
 optional = false
@@ -102,8 +102,9 @@ toml = ">=0.10.1"
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
-d = ["aiohttp (>=3.6.0)", "aiohttp-cors"]
+d = ["aiohttp (>=3.6.0)", "aiohttp-cors (>=0.4.0)"]
 python2 = ["typed-ast (>=1.4.2)"]
+uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "brotlipy"
@@ -538,7 +539,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "==3.*,>=3.8.0"
-content-hash = "46f5958488c7eccaeb6382c98896df57f5936cb6199dcc3462d14d031bf8e986"
+content-hash = "0555b7126c1285fe580a15d07111675594c1d5e8c955345f62150f31b6b1cb06"
 
 [metadata.files]
 aiodns = [
@@ -605,8 +606,8 @@ bandit = [
     {file = "bandit-1.7.0.tar.gz", hash = "sha256:8a4c7415254d75df8ff3c3b15cfe9042ecee628a1e40b44c15a98890fbfc2608"},
 ]
 black = [
-    {file = "black-21.5b1-py3-none-any.whl", hash = "sha256:8a60071a0043876a4ae96e6c69bd3a127dad2c1ca7c8083573eb82f92705d008"},
-    {file = "black-21.5b1.tar.gz", hash = "sha256:23695358dbcb3deafe7f0a3ad89feee5999a46be5fec21f4f1d108be0bcdb3b1"},
+    {file = "black-21.6b0-py3-none-any.whl", hash = "sha256:dfb8c5a069012b2ab1e972e7b908f5fb42b6bbabcba0a788b86dc05067c7d9c7"},
+    {file = "black-21.6b0.tar.gz", hash = "sha256:dc132348a88d103016726fe360cb9ede02cecf99b76e3660ce6c596be132ce04"},
 ]
 brotlipy = [
     {file = "brotlipy-0.7.0-cp27-cp27m-macosx_10_6_intel.whl", hash = "sha256:af65d2699cb9f13b26ec3ba09e75e80d31ff422c03675fcb36ee4dabe588fdc2"},

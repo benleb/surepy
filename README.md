@@ -26,6 +26,7 @@ pip install --upgrade surepy
 ```
 
 there is also a small cli available
+
 ```bash
 $ surepy --help
 Usage: surepy [OPTIONS] COMMAND [ARGS]...

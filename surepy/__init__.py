@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 
-
 from datetime import datetime
 from importlib.metadata import version
 from logging import Logger
@@ -111,7 +110,7 @@ class Surepy:
         else:  # if token := find_token():
             self._auth_token = find_token()
 
-        self._entities: dict[int, SurepyEntity] = {}
+        self.entities: dict[int, SurepyEntity] = {}
         self._pets: dict[int, Any] = {}
         self._flaps: dict[int, Any] = {}
         self._feeders: dict[int, Any] = {}
@@ -174,10 +173,10 @@ class Surepy:
 
             pet_id = int(pair["pet_id"])
             device_id = int(pair["device_id"])
-            device: SurepyDevice = self._entities[device_id]  # type: ignore
+            device: SurepyDevice = self.entities[device_id]  # type: ignore
 
             latest_actions[pet_id] = {}
-            latest_actions[pet_id] = self._entities[device_id]._data
+            latest_actions[pet_id] = self.entities[device_id]._data
 
             # movement
             if (
@@ -186,7 +185,7 @@ class Surepy:
             ):
                 latest_datapoint = pair["movement"]["datapoints"].pop()
                 # latest_actions[pet_id]["move"] = latest_datapoint
-                latest_actions[pet_id] = self._entities[device_id]._data["move"] = latest_datapoint
+                latest_actions[pet_id] = self.entities[device_id]._data["move"] = latest_datapoint
 
             # feeding
             elif (
@@ -195,13 +194,13 @@ class Surepy:
             ):
                 latest_datapoint = pair["feeding"]["datapoints"].pop()
                 # latest_actions[pet_id]["lunch"] = latest_datapoint
-                latest_actions[pet_id] = self._entities[device_id]._data["lunch"] = latest_datapoint
+                latest_actions[pet_id] = self.entities[device_id]._data["lunch"] = latest_datapoint
 
             # drinking
             elif device.type == EntityType.FELAQUA and pair["drinking"]["datapoints"]:
                 latest_datapoint = pair["drinking"]["datapoints"].pop()
                 # latest_actions[pet_id]["drink"] = latest_datapoint
-                latest_actions[pet_id] = self._entities[device_id]._data["drink"] = latest_datapoint
+                latest_actions[pet_id] = self.entities[device_id]._data["drink"] = latest_datapoint
 
         return latest_actions
 
@@ -224,7 +223,7 @@ class Surepy:
             updated_at = latest_entry_frame["updated_at"]
             latest_drink = {"remaining": remaining, "change": change, "date": updated_at}
 
-            self._entities[device_id]._data["latest_drink"] = latest_drink
+            self.entities[device_id]._data["latest_drink"] = latest_drink
 
         except (KeyError, TypeError):
             logger.warning("no water remaining/change found in: %s", felaqua_related_entries)
@@ -272,11 +271,11 @@ class Surepy:
         return [pet for pet in (await self.get_entities()).values() if isinstance(pet, Pet)]
 
     async def get_device(self, device_id: int) -> SurepyDevice | None:
-        if device_id not in self._entities:
+        if device_id not in self.entities:
             await self.get_entities()
 
-        if self._entities[device_id].type != EntityType.PET:
-            return self._entities[device_id]  # type: ignore
+        if self.entities[device_id].type != EntityType.PET:
+            return self.entities[device_id]  # type: ignore
         else:
             return None
 
@@ -357,7 +356,7 @@ class Surepy:
 
             household_ids.add(surepy_entities[entity_id].household_id)
 
-            self._entities[entity_id] = surepy_entities[entity_id]
+            self.entities[entity_id] = surepy_entities[entity_id]
 
         # fetch additional data about movement, feeding & drinking
         for household_id in household_ids:
@@ -372,4 +371,4 @@ class Surepy:
             if feeder.type == EntityType.FEEDER
         ]
 
-        return self._entities
+        return self.entities

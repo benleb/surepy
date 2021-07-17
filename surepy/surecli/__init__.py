@@ -27,13 +27,15 @@ from surepy.entities.devices import SurepyDevice, Flap
 from surepy.entities.pet import Pet
 
 from surepy import (
-    TOKEN_ENV,
     Surepy,
     __name__ as sp_name,
     __version__ as sp_version,
     natural_time,
 )
 import asyncio
+
+
+TOKEN_ENV = "SUREPY_TOKEN"
 
 
 def coro(f: Any) -> Any:
@@ -174,20 +176,14 @@ async def pets(ctx: click.Context, token: str | None) -> None:
 
         pets: list[Pet] = await sp.get_pets()
 
-        ##
-        ## JSON Output
-        ##
-
+        # json output
         if ctx.obj.get("json", False):
             for pet in pets:
                 json_str = json.dumps(pet.raw_data(), indent=4)
                 print(json_str)
             return
 
-        ##
-        ## HUMAN READABLE
-        ##
-
+        # pretty print
         table = Table(box=box.MINIMAL)
         table.add_column("Name", style="bold")
         table.add_column("Where", justify="right")

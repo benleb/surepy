@@ -358,17 +358,5 @@ class Surepy:
 
             self.entities[entity_id] = surepy_entities[entity_id]
 
-        # fetch additional data about movement, feeding & drinking
-        for household_id in household_ids:
-            await self.get_actions(household_id=household_id)
-        for household_id in felaqua_household_ids:
-            await self.get_latest_anonymous_drinks(household_id=household_id)
-
-        # stupid idea, fix this
-        _ = [
-            feeder.add_bowls()  # type: ignore
-            for feeder in surepy_entities.values()
-            if feeder.type == EntityType.FEEDER
-        ]
 
         return self.entities

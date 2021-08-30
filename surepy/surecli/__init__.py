@@ -8,31 +8,26 @@ The cli module of surepy
 
 from __future__ import annotations
 
+import asyncio
 import json
-from aiohttp import ClientSession, TCPConnector
+
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from shutil import copyfile
-from surepy.enums import Location
 from sys import exit
-from typing import Any, Callable, Coroutine
+from typing import Any, cast
 
 import click
 
+from aiohttp import ClientSession, TCPConnector
 from rich import box
-from rich.console import Console
 from rich.table import Table
-from surepy.entities.devices import SurepyDevice, Flap
-from surepy.entities.pet import Pet
 
-from surepy import (
-    Surepy,
-    __name__ as sp_name,
-    __version__ as sp_version,
-    natural_time,
-)
-import asyncio
+from surepy import Surepy, __name__ as sp_name, __version__ as sp_version, console, natural_time
+from surepy.entities.devices import Flap, SurepyDevice
+from surepy.entities.pet import Pet
+from surepy.enums import Location, LockState
 
 
 TOKEN_ENV = "SUREPY_TOKEN"
@@ -48,8 +43,6 @@ def coro(f: Any) -> Any:
 
 token_file = Path("~/.surepy.token").expanduser()
 old_token_file = token_file.with_suffix(".old_token")
-
-console = Console(width=120)
 
 CONTEXT_SETTINGS: dict[str, Any] = dict(help_option_names=["--help"])
 
@@ -400,31 +393,32 @@ async def locking(ctx: click.Context, device_id: int, mode: str, token: str | No
 
     sp = Surepy(auth_token=str(token))
 
-    flap: Flap | None
-    if (flap := await sp.flap(flap_id=device_id)) and (type(flap) == Flap):
+    if (flap := await sp.get_device(device_id=device_id)) and (type(flap) == Flap):
 
-        lock_control: Callable[..., Coroutine[Any, Any, Any]] | None = None
+        flap = cast(Flap, flap)
+
+        lock_state: LockState
 
         if mode == "lock":
-            lock_control = flap.lock
+            lock_state = LockState.LOCKED_ALL
             state = "locked"
         elif mode == "in":
-            lock_control = flap.lock_in
+            lock_state = LockState.LOCKED_IN
             state = "locked in"
         elif mode == "out":
-            lock_control = flap.lock_out
+            lock_state = LockState.LOCKED_OUT
             state = "locked out"
         elif mode == "unlock":
-            lock_control = flap.unlock
+            lock_state = LockState.UNLOCKED
             state = "unlocked"
         else:
             return
 
-        if lock_control:
+        if lock_state:
             console.print(f"setting {flap.name} to '{state}'...")
 
-            if await lock_control(device_id=device_id) and (
-                device := await sp.flap(flap_id=device_id)
+            if await sp.sac._set_lock_state(device_id=device_id, mode=lock_state) and (
+                device := await sp.get_device(device_id=device_id)
             ):
                 console.print(f"✅ {device.name} set to '{state}' 🐾")
             else:

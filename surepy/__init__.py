@@ -380,7 +380,7 @@ class Surepy:
 
             else:
                 logger.warning(
-                    f"unknown entity type: {entity.get('name', '-')} ({entity_type}): {entity}"
+                    "unknown type: %s (%s): %s", entity.get("name", "-"), entity_type, entity
                 )
 
             household_ids.add(surepy_entities[entity_id].household_id)

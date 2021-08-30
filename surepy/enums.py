@@ -59,9 +59,20 @@ class BowlPosition(SureEnum):
     RIGHT = 1
 
 
-# animal related
 class Species(SureEnum):
-    """Sure Feeder Bowl side."""
+    """Species of the pet."""
 
     CAT = 1
     DOG = 2
+
+
+class TimelineEvent(SureEnum):
+    """Sure timeline event types."""
+
+    BATTERY_LOW = 1
+    FOOD_FILLED = 21
+    EAT = 22
+    FEEDER_TARE = 24
+    DRINK = 29
+    REMINDER_FRESH_WATER = 32
+    ANONYMOUS_DRINK = 34

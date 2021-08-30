@@ -13,10 +13,13 @@ import logging
 from datetime import datetime
 from importlib.metadata import version
 from logging import Logger
+from math import ceil
 from typing import Any
 from uuid import uuid1
 
 import aiohttp
+
+from rich.console import Console
 
 from surepy.client import SureAPIClient, find_token, token_seems_valid
 from surepy.const import (
@@ -41,6 +44,8 @@ __version__ = version(__name__)
 
 # get a logger
 logger: Logger = logging.getLogger(__name__)
+
+console = Console(width=120)
 
 
 def natural_time(duration: int) -> str:
@@ -208,41 +213,65 @@ class Surepy:
 
         latest_drink: dict[str, float | str | datetime] = {}
 
+        household_timeline = await self.get_household_timeline(household_id, entries=50)
+
         felaqua_related_entries: list[dict[str, Any]] = list(
             filter(
                 lambda x: x["type"] in [29, 30, 34],  # type: ignore
-                await self.get_household_timeline(household_id),  # type: ignore
+                household_timeline,  # type: ignore
             )
         )
 
-        try:
-            device_id = felaqua_related_entries[0]["weights"][0]["device_id"]
-            latest_entry_frame = felaqua_related_entries[0]["weights"][0]["frames"][0]
-            remaining = latest_entry_frame["current_weight"]
-            change = latest_entry_frame["change"]
-            updated_at = latest_entry_frame["updated_at"]
-            latest_drink = {"remaining": remaining, "change": change, "date": updated_at}
+        if felaqua_related_entries:
+            try:
+                device_id = felaqua_related_entries[0]["weights"][0]["device_id"]
+                latest_entry_frame = felaqua_related_entries[0]["weights"][0]["frames"][0]
+                remaining = latest_entry_frame["current_weight"]
+                change = latest_entry_frame["change"]
+                updated_at = latest_entry_frame["updated_at"]
+                latest_drink = {"remaining": remaining, "change": change, "date": updated_at}
 
-            self.entities[device_id]._data["latest_drink"] = latest_drink
+                self.entities[device_id]._data["latest_drink"] = latest_drink
 
-        except (KeyError, TypeError):
-            logger.warning("no water remaining/change found in: %s", felaqua_related_entries)
+            except (KeyError, TypeError, IndexError):
+                logger.warning(
+                    "no water remaining/change events found in household timeline "
+                    "(checked last %s entries)",
+                    len(household_timeline) or 0,
+                )
 
         return latest_drink
 
     async def get_household_timeline(
-        self, household_id: int | None = None
-    ) -> list[dict[str, Any]] | dict[str, Any] | None:
+        self, household_id: int | None = None, entries: int = 25
+    ) -> list[dict[str, Any]]:
         """Fetch Felaqua water level information."""
 
-        resource = HOUSEHOLD_TIMELINE_RESOURCE.format(
-            BASE_RESOURCE=BASE_RESOURCE, household_id=household_id
-        )
+        # pagination as the api gives us at most 25 results per page
+        max_entries_per_page = 25
+        pages_to_fetch = ceil(entries / max_entries_per_page)
 
-        if timeline := await self.sac.call(method="GET", resource=resource):
-            return timeline.get("data", [])
+        current_page = 1
+        household_timeline = []
 
-        return []
+        while current_page <= pages_to_fetch:
+
+            console.print()
+            console.print(f"{current_page = }/{pages_to_fetch} | {len(household_timeline) = }")
+
+            resource = HOUSEHOLD_TIMELINE_RESOURCE.format(
+                BASE_RESOURCE=BASE_RESOURCE,
+                household_id=household_id,
+                page=current_page,
+                page_size=max_entries_per_page,
+            )
+
+            if timeline := await self.sac.call(method="GET", resource=resource):
+                household_timeline += timeline.get("data", [])
+
+            current_page += 1
+
+        return household_timeline
 
     async def get_timeline(self) -> dict[str, Any]:
         """Retrieve the flap data/state."""

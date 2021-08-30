@@ -316,9 +316,7 @@ async def report(
 
                 if datapoints:
 
-                    # datapoints.sort(key=lambda x: datetime.fromisoformat(x["from"]), reverse=True)
-
-                    for datapoint in datapoints[:25]:
+                    for datapoint in datapoints:
 
                         from_time = datetime.fromisoformat(datapoint["from"])
                         to_time = (

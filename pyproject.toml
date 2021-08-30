@@ -1,14 +1,5 @@
 [tool.poetry]
-name = "surepy"
-version = "0.7.0"
-description = "Library to interact with the flaps & doors from Sure Petcare."
 authors = ["Ben Lebherz <git@benleb.de>"]
-license = "MIT"
-readme = "README.md"
-homepage = "https://github.com/benleb/surepy"
-repository = "https://github.com/benleb/surepy"
-documentation = "https://surepy.readthedocs.io"
-keywords = ["cat", "surepetcare", "home-assistant"]
 classifiers = [
   "Topic :: Home Automation",
   "Topic :: Software Development",
@@ -24,9 +15,18 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Development Status :: 5 - Production/Stable",
 ]
+description = "Library to interact with the flaps & doors from Sure Petcare."
+documentation = "https://surepy.readthedocs.io"
+homepage = "https://github.com/benleb/surepy"
+keywords = ["cat", "surepetcare", "home-assistant"]
+license = "MIT"
+name = "surepy"
+readme = "README.md"
+repository = "https://github.com/benleb/surepy"
+version = "0.7.0"
 
 [tool.poetry.dependencies]
-aiohttp = { extras = ["speedups"], version = "^3.7.4" }
+aiohttp = {extras = ["speedups"], version = "^3.7.4"}
 async-timeout = "^3.0.1"
 click = ">=7.1.2,<9.0.0"
 python = "==3.*,>=3.8.0"
@@ -36,8 +36,7 @@ rich = "^10.1.0"
 [tool.poetry.dev-dependencies]
 bandit = "^1.6.2"
 black = "^21.6b0"
-coverage = { extras = ["toml"], version = "^5.3.1" }
-flake8 = "^3.8.4"
+coverage = {extras = ["toml"], version = "^5.3.1"}
 isort = "^5.9.1"
 pycodestyle = "^2.6.0"
 pytest = "^6.2.1"

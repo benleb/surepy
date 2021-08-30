@@ -3,9 +3,8 @@ from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
-
 from pprint import pformat
+from typing import Any
 
 from surepy.enums import EntityType, Location
 

@@ -12,13 +12,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from surepy.entities import (
-    PetActivity,
-    PetLocation,
-    StateDrinking,
-    StateFeeding,
-    SurepyEntity,
-)
+from surepy.entities import PetActivity, PetLocation, StateDrinking, StateFeeding, SurepyEntity
 from surepy.entities.states import PetState
 from surepy.enums import EntityType, FoodType, Location
 
@@ -62,6 +56,7 @@ class Pet(SurepyEntity):
     @property
     def food_type(self) -> str | None:
         """Type of food."""
+        # pylint: disable=used-before-assignment
         return str(FoodType(type_id)) if (type_id := self._data.get("food_type_id")) else None
 
     @property
@@ -93,6 +88,7 @@ class Pet(SurepyEntity):
     def location(self) -> PetLocation:
         """Location of the Pet."""
         position = self._data.get("position", {})
+        # pylint: disable=no-member
         return PetLocation(
             where=Location(position.get("where", Location.UNKNOWN.value)),
             since=position.get("since", None),
@@ -102,6 +98,7 @@ class Pet(SurepyEntity):
     def activity(self) -> PetActivity:
         """Last Activity of the Pet."""
         activity = self._data.get("status", {}).get("activity", {})
+        # pylint: disable=no-member
         return PetActivity(
             where=Location(activity.get("where", Location.UNKNOWN.value)),
             since=activity.get("since", None),

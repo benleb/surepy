@@ -9,10 +9,10 @@ Classes representing pet states.
 from __future__ import annotations
 
 from abc import ABC
+from datetime import datetime
 from typing import Any
 
 from surepy.enums import Location
-from datetime import datetime
 
 
 class PetState(ABC):

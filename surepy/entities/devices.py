@@ -7,6 +7,7 @@ ABC representing a Sure Petcare Device.
 """
 
 from __future__ import annotations
+
 from abc import ABC
 from typing import Any
 from urllib.parse import urlparse

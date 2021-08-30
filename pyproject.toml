@@ -39,11 +39,35 @@ black = "^21.6b0"
 coverage = {extras = ["toml"], version = "^5.3.1"}
 isort = "^5.9.1"
 pycodestyle = "^2.6.0"
+pylint = "^2.10.2"
 pytest = "^6.2.1"
 pytest-cov = "^2.12.1"
 
 [tool.poetry.scripts]
 surepy = 'surepy.surecli:cli'
+
+[tool.pylint.MASTER]
+ignore = ["tests", "const.py", "surecli"]
+disable = ["missing-module-docstring", "missing-class-docstring", "missing-function-docstring"]
+
+# Use a conservative default here; 2 should speed up most setups and not hurt
+# any too bad. Override on command line as appropriate.
+jobs = 3
+load-plugins = [
+  "pylint.extensions.code_style",
+  "pylint.extensions.typing",
+  "pylint_strict_informational",
+]
+
+[tool.pylint.BASIC]
+good-names = ["_", "id", "sp", "at"]
+
+[tool.pylint.TYPING]
+py-version = "3.9"
+runtime-typing = false
+
+[tool.pylint.FORMAT]
+max-line-length = 100
 
 [tool.isort]
 balanced_wrapping = true
@@ -51,7 +75,7 @@ combine_as_imports = true
 combine_star = true
 force_grid_wrap = 0
 include_trailing_comma = true
-line_length = 120
+line_length = 100
 lines_after_imports = 2
 lines_between_types = 1
 multi_line_output = 3
@@ -59,9 +83,6 @@ order_by_type = true
 use_parentheses = true
 
 [tool.black]
-line-length = 120
-target_version = ["py38"]
-include = '\.pyi?$'
 exclude = '''
 (
   /(
@@ -78,6 +99,10 @@ exclude = '''
   )/
 )
 '''
+include = '\.pyi?$'
+line-length = 100
+target_version = ["py39"]
+
 
 [tool.pytest.ini_options]
 addopts = "--cov --setup-show --code-highlight=yes --verbose"

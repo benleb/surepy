@@ -46,11 +46,7 @@ from .const import (
     USER_AGENT,
 )
 from .enums import Location, LockState
-from .exceptions import (
-    SurePetcareAuthenticationError,
-    SurePetcareConnectionError,
-    SurePetcareError,
-)
+from .exceptions import SurePetcareAuthenticationError, SurePetcareConnectionError, SurePetcareError
 
 
 TOKEN_ENV = "SUREPY_TOKEN"
@@ -213,9 +209,10 @@ class SureAPIClient:
     ) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
 
-        logger.debug("🐾 %s call to: %s", method, resource)
-        if data:
-            logger.debug("🐾   with data: %s", data)
+        # logger.debug("")
+        # logger.debug("🐾 %s call to: %s", method, resource)
+        # if data:
+        #     logger.debug("🐾   with data: %s", data)
 
         if not self._auth_token:
             self._auth_token = await self.get_token()
@@ -234,7 +231,7 @@ class SureAPIClient:
                 # use etag if available
                 if resource in self._etags:
                     headers[ETAG] = str(self._etags.get(resource))
-                    logger.debug("🐾   using available etag '%s'", headers[ETAG])
+                    # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
 
                 await session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await session.request(
@@ -242,7 +239,6 @@ class SureAPIClient:
                 )
 
                 if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
-                    logger.debug("🐾   %d: got new data", response.status)
 
                     self.resources[resource] = response_data = await response.json()
 
@@ -251,10 +247,19 @@ class SureAPIClient:
 
                 elif response.status == HTTPStatus.NOT_MODIFIED:
                     # Etag header matched, no new data available
-                    logger.debug("🐾   %d: etag matched - no new data available", response.status)
+                    logger.debug(
+                        "🐾 \x1b[38;2;0;255;0m·\x1b[0m %d: etag matched - no new data available",
+                        response.status,
+                    )
 
                 elif response.status == HTTPStatus.UNAUTHORIZED:
-                    logger.error("🐾   %d: authentication failed: %s", response.status, response)
+                    logger.error(
+                        "🐾 \x1b[38;2;255;26;102m·\x1b[0m %s %s: %d | %s",
+                        method,
+                        resource.replace("https://", ""),
+                        response.status,
+                        response,
+                    )
                     self._auth_token = None
                     if not second_try:
                         token_refreshed = self.get_token()
@@ -264,7 +269,20 @@ class SureAPIClient:
                     raise SurePetcareAuthenticationError()
 
                 else:
-                    logger.info("🐾   %d: unknown response: %s", response.status, response)
+                    logger.info(
+                        "🐾 \x1b[38;2;255;0;255m·\x1b[0m %s %s: %d | %s",
+                        method,
+                        resource.replace("https://", ""),
+                        response.status,
+                        response,
+                    )
+
+                logger.debug(
+                    "🐾 \x1b[38;2;0;255;0m·\x1b[0m %s %s | %d",
+                    method,
+                    resource.replace("https://", ""),
+                    len(response_data.get("data", 0)),
+                )
 
                 return response_data
 
@@ -302,8 +320,6 @@ class SureAPIClient:
             desired_state = data.get("where")
             state = response_data.get("where")
 
-            logging.debug(f"bool({state} == {desired_state}) = {bool(state == desired_state)}")
-
             # check if the state is correctly updated
             if state == desired_state:
                 return response
@@ -339,8 +355,6 @@ class SureAPIClient:
 
             desired_state = data.get("locking")
             state = response_data.get("locking")
-
-            logging.debug(f"bool({state} == {desired_state}) = {bool(state == desired_state)}")
 
             # check if the state is correctly updated
             if state == desired_state:

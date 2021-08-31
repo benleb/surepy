@@ -256,9 +256,6 @@ class Surepy:
 
         while current_page <= pages_to_fetch:
 
-            console.print()
-            console.print(f"{current_page = }/{pages_to_fetch} | {len(household_timeline) = }")
-
             resource = HOUSEHOLD_TIMELINE_RESOURCE.format(
                 BASE_RESOURCE=BASE_RESOURCE,
                 household_id=household_id,

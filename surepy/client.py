@@ -277,11 +277,15 @@ class SureAPIClient:
                         response,
                     )
 
+                if response_data:
+                    responselen = len(response_data.get("data", 0))
+                else:
+                    responselen = 0
                 logger.debug(
                     "🐾 \x1b[38;2;0;255;0m·\x1b[0m %s %s | %d",
                     method,
                     resource.replace("https://", ""),
-                    len(response_data.get("data", 0)),
+                    responselen,
                 )
 
                 return response_data

@@ -312,6 +312,10 @@ class SureAPIClient:
     async def set_pet_location(self, pet_id: int, location: Location) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         resource = POSITION_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, pet_id=pet_id)
+
+        if location not in [Location.INSIDE, Location.OUTSIDE]:
+            raise ValueError(f"Unknown location: {location.name.title()}")
+
         data = {
             "where": int(location.value),
             "since": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),

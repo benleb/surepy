@@ -49,7 +49,7 @@ from .enums import Location, LockState
 from .exceptions import SurePetcareAuthenticationError, SurePetcareConnectionError, SurePetcareError
 
 
-TOKEN_ENV = "SUREPY_TOKEN"
+TOKEN_ENV = "SUREPY_TOKEN"  # nosec
 TOKEN_FILE = Path("~/.surepy.token").expanduser()
 
 # get a logger
@@ -353,6 +353,7 @@ class SureAPIClient:
     async def _set_lock_state(self, device_id: int, mode: LockState) -> dict[str, Any] | None:
         """Retrieve the flap data/state."""
         resource = CONTROL_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id)
+
         data = {"locking": int(mode.value)}
 
         if (

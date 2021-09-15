@@ -8,13 +8,19 @@ ABC representing a Sure Petcare Device.
 
 from __future__ import annotations
 
+import logging
+
 from abc import ABC
 from typing import Any
 from urllib.parse import urlparse
 
-from surepy.const import PET_FLAP_VOLTAGE_DIFF, PET_FLAP_VOLTAGE_LOW
+from surepy.const import SURE_BATT_VOLTAGE_FULL, SURE_BATT_VOLTAGE_LOW
 from surepy.entities import SurepyEntity
 from surepy.enums import BowlPosition, FoodType, LockState
+
+
+# get a logger
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class Hub(SurepyEntity):
@@ -54,17 +60,28 @@ class SurepyDevice(SurepyEntity, ABC):
     @property
     def battery_level(self) -> int | None:
         """Return battery level in percent."""
+        return self.calculate_battery_level()
 
-        battery_percent: int | None
+    def calculate_battery_level(
+        self,
+        voltage_full: float = SURE_BATT_VOLTAGE_FULL,
+        voltage_low: float = SURE_BATT_VOLTAGE_LOW,
+        num_batteries: int = 4,
+    ) -> int | None:
+        """Return battery voltage."""
+
         try:
-            per_battery_voltage = self._data["status"]["battery"] / 4
-            voltage_diff = per_battery_voltage - PET_FLAP_VOLTAGE_LOW
-            battery_percent = min(int(voltage_diff / PET_FLAP_VOLTAGE_DIFF * 100), 100)
-            battery_percent = max(battery_percent, 0)
-        except (KeyError, TypeError):
-            battery_percent = None
+            voltage_diff = voltage_full - voltage_low
+            battery_voltage = float(self._data["status"]["battery"])
+            voltage_per_battery = battery_voltage / num_batteries
+            voltage_per_battery_diff = voltage_per_battery - voltage_low
 
-        return battery_percent
+            # return batterie level between 0 and 100
+            return max(min(int(voltage_per_battery_diff / voltage_diff * 100), 100), 0)
+
+        except (KeyError, TypeError, ValueError) as error:
+            logger.debug("error while calculating battery level: %s", error)
+            return None
 
 
 class FeederBowl:

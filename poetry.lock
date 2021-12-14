@@ -19,7 +19,7 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 aiodns = {version = "*", optional = true, markers = "extra == \"speedups\""}
-async-timeout = ">=3.0,<4.0"
+async-timeout = ">=3.0.1,<5.0"
 attrs = ">=17.3.0"
 brotlipy = {version = "*", optional = true, markers = "extra == \"speedups\""}
 cchardet = {version = "*", optional = true, markers = "extra == \"speedups\""}

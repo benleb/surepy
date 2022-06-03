@@ -36,7 +36,7 @@ rich = "^10.1.0"
 [tool.poetry.dev-dependencies]
 bandit = "^1.6.2"
 black = "^21.9b0"
-coverage = {extras = ["toml"], version = "^5.3.1"}
+coverage = {extras = ["toml"], version = "^6.4.1"}
 isort = "^5.9.3"
 mypy = "^0.910"
 pycodestyle = "^2.6.0"

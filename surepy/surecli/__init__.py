@@ -452,7 +452,7 @@ async def position(
     pet: Pet | None
     location: Location | None
 
-    if (pet := await sp.pet(pet_id=pet_id)) and (type(pet) == Pet):
+    if (pet := await sp.get_pet(pet_id=pet_id)) and (type(pet) == Pet):
 
         if position == "in":
             location = Location.INSIDE
@@ -462,7 +462,7 @@ async def position(
             return
 
         if location:
-            if await sp.sac.set_position(pet.id, location):
+            if await sp.sac.set_pet_location(pet.id, location):
                 console.print(f"{pet.name} set to '{location.name}' 🐾")
             else:
                 console.print(

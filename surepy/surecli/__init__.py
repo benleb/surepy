@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 
-from datetime import datetime
+from datetime import datetime, time
 from functools import wraps
 from pathlib import Path
 from shutil import copyfile
@@ -425,6 +425,52 @@ async def locking(ctx: click.Context, device_id: int, mode: str, token: str | No
                 console.print(f"❌ setting to '{state}' may have worked but something is fishy..!")
 
         # await sp.sac.close_session()
+
+
+@cli.command()
+@click.pass_context
+@click.option(
+    "-d", "--device", "device_id", required=True, type=int, help="id of the sure petcare device"
+)
+@click.option(
+    "--lock-time",
+    required=True,
+    type=time.fromisoformat,
+    help="Curfew lock time (in household's timezone)",
+)
+@click.option(
+    "--unlock-time",
+    required=True,
+    type=time.fromisoformat,
+    help="Curfew unlock time (in household's timezone)",
+)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
+@coro
+async def curfew(
+    ctx: click.Context, device_id: int, lock_time: time, unlock_time: time, token: str | None = None
+) -> None:
+    """curfew control"""
+
+    token = token if token else ctx.obj.get("token", None)
+
+    sp = Surepy(auth_token=token)
+
+    if (flap := await sp.get_device(device_id=device_id)) and (type(flap) == Flap):
+
+        flap = cast(Flap, flap)
+
+        console.print(f"setting {flap.name} curfew {lock_time=} {unlock_time=}")
+
+        if await sp.sac.set_curfew(
+            device_id=device_id, lock_time=lock_time, unlock_time=unlock_time
+        ) and (device := await sp.get_device(device_id=device_id)):
+            console.print(f"✅ {device.name} curfew {lock_time=} {unlock_time=} 🐾")
+        else:
+            console.print(
+                f"❌ setting curfew {lock_time=} {unlock_time=} may have worked but something is fishy..!"
+            )
 
 
 @cli.command()

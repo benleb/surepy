@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from datetime import datetime
+from datetime import datetime, time
 from http import HTTPStatus
 from http.client import HTTPException
 from logging import Logger
@@ -371,3 +371,36 @@ class SureAPIClient:
 
         # return None
         raise SurePetcareError("ERROR (UN)LOCKING DEVICE - PLEASE CHECK IMMEDIATELY!")
+
+    async def set_curfew(
+        self, device_id: int, lock_time: time, unlock_time: time
+    ) -> dict[str, Any] | None:
+        """Set the flap curfew times, using the household's timezone"""
+
+        resource = CONTROL_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id)
+
+        data = {
+            "curfew": [
+                {
+                    "lock_time": lock_time.strftime("%H:%M"),
+                    "unlock_time": unlock_time.strftime("%H:%M"),
+                    "enabled": True,
+                }
+            ]
+        }
+
+        if (
+            response := await self.call(
+                method="PUT", resource=resource, device_id=device_id, data=data
+            )
+        ) and (response_data := response.get("data")):
+
+            desired_state = data.get("curfew")
+            state = response_data.get("curfew")
+
+            # check if the state is correctly updated
+            if state == desired_state:
+                return response
+
+        # return None
+        raise SurePetcareError("ERROR SETTING CURFEW - PLEASE CHECK IMMEDIATELY!")

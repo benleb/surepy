@@ -204,6 +204,7 @@ class SureAPIClient:
         method: str,
         resource: str,
         data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
         second_try: bool = False,
         **_: Any,
     ) -> dict[str, Any] | None:
@@ -235,7 +236,7 @@ class SureAPIClient:
 
                 await session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await session.request(
-                    method, resource, headers=headers, data=data
+                    method, resource, headers=headers, data=data, json=json
                 )
 
                 if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
@@ -391,7 +392,7 @@ class SureAPIClient:
 
         if (
             response := await self.call(
-                method="PUT", resource=resource, device_id=device_id, data=data
+                method="PUT", resource=resource, device_id=device_id, json=data
             )
         ) and (response_data := response.get("data")):
 

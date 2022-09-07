@@ -293,6 +293,15 @@ class Surepy:
             )
         ) or {}
 
+    async def get_pet(self, pet_id: int) -> Pet | None:
+        if pet_id not in self.entities:
+            await self.get_entities()
+
+        if self.entities[pet_id].type == EntityType.PET:
+            return self.entities[pet_id]  # type: ignore
+        else:
+            return None
+
     async def get_pets(self) -> list[Pet]:
         return [pet for pet in (await self.get_entities()).values() if isinstance(pet, Pet)]
 

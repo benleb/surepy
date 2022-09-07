@@ -23,7 +23,7 @@ license = "MIT"
 name = "surepy"
 readme = "README.md"
 repository = "https://github.com/benleb/surepy"
-version = "0.7.2"
+version = "0.8.0"
 
 [tool.poetry.dependencies]
 aiohttp = {extras = ["speedups"], version = "^3.7.4"}

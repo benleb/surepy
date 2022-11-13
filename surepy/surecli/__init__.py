@@ -25,7 +25,7 @@ from rich import box
 from rich.table import Table
 
 from surepy import Surepy, __name__ as sp_name, __version__ as sp_version, console, natural_time
-from surepy.entities.devices import Flap, SurepyDevice
+from surepy.entities.devices import Flap, SurepyDevice, Feeder
 from surepy.entities.pet import Pet
 from surepy.enums import Location, LockState
 
@@ -471,6 +471,69 @@ async def position(
 
         # await sp.sac.close_session()
 
+@cli.command()
+@click.pass_context
+@click.option(
+    "-d", "--device", "device_id", required=True, type=int, help="id of the sure petcare device"
+)
+@click.option("-p", "--pet", "pet_id", required=False, type=int, help="id of the pet")
+@click.option(
+    "-m",
+    "--mode",
+    required=True,
+    type=click.Choice(["add", "remove", "list"]),
+    help="assignment action",
+)
+@click.option(
+    "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
+)
+@coro
+async def feederassign(ctx: click.Context, device_id: int, mode: str, pet_id: int | None = None, token: str | None = None) -> None:
+    """feeder pet assignment"""
+
+    token = token if token else ctx.obj.get("token", None)
+
+    sp = Surepy(auth_token=str(token))
+
+    if (feeder := await sp.get_device(device_id=device_id)) and (type(feeder) == Feeder):
+
+        pets: list[Pet] = await sp.get_pets()
+
+        if mode == "list":
+            table = Table(box=box.MINIMAL)
+            table.add_column("ID", style="bold")
+            table.add_column("Name", style="")
+            table.add_column("Created At", style="")
+            for tag in feeder.tags.values():
+                for pet in pets:
+                    if tag.id == pet.tag_id:
+                        table.add_row(
+                            str(pet.id),
+                            str(pet.name),
+                            str(datetime.fromisoformat(tag.created_at())),
+                        )
+            console.print(table, "", sep="\n")
+        if mode == "add":
+            for pet in pets:
+                if pet.id == pet_id:
+                    for tag in feeder.tags.values():
+                        if tag.id == pet.tag_id:
+                            console.print(f"Pet is already assigned to this feeder.")
+                            return
+                    if await sp.sac._add_tag_to_device(device_id=device_id, tag_id=pet.tag_id):
+                        console.print(f"✅ {pet.name} added to '{feeder.name}' 🐾")
+        if mode == "remove":
+            for pet in pets:
+                if pet.id == pet_id:
+                    for tag in feeder.tags.values():
+                        if tag.id == pet.tag_id:
+                            if await sp.sac._remove_tag_from_device(device_id=device_id, tag_id=pet.tag_id):
+                                console.print(f"✅ {pet.name} removed from '{feeder.name}' 🐾")
+                                return
+                    console.print("Pet is not assigned to this feeder.")
+        else:
+            return
+        # await sp.sac.close_session()
 
 if __name__ == "__main__":
     cli(obj={})

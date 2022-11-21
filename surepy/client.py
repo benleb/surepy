@@ -262,7 +262,7 @@ class SureAPIClient:
                     )
                     self._auth_token = None
                     if not second_try:
-                        token_refreshed = self.get_token()
+                        token_refreshed = await self.get_token()
                         if token_refreshed:
                             await self.call(method="GET", resource=resource, second_try=True)
 

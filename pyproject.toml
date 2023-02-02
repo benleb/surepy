@@ -40,7 +40,7 @@ coverage = {extras = ["toml"], version = "^5.3.1"}
 isort = "^5.9.3"
 mypy = "^0.910"
 pycodestyle = "^2.6.0"
-pylint = "^2.10.2"
+pylint = "^2.16.0"
 pytest = "^6.2.1"
 pytest-cov = "^2.12.1"
 

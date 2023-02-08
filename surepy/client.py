@@ -217,7 +217,7 @@ class SureAPIClient:
         if not self._auth_token:
             self._auth_token = await self.get_token()
 
-        if method not in ["GET", "PUT", "POST"]:
+        if method not in ["GET", "PUT", "POST", "DELETE"]:
             raise HTTPException(f"unknown http method: {method}")
 
         response_data = None

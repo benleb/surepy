@@ -414,15 +414,14 @@ async def locking(ctx: click.Context, device_id: int, mode: str, token: str | No
         else:
             return
 
-        if lock_state:
-            console.print(f"setting {flap.name} to '{state}'...")
+        console.print(f"setting {flap.name} to '{state}'...")
 
-            if await sp.sac._set_lock_state(device_id=device_id, mode=lock_state) and (
-                device := await sp.get_device(device_id=device_id)
-            ):
-                console.print(f"✅ {device.name} set to '{state}' 🐾")
-            else:
-                console.print(f"❌ setting to '{state}' may have worked but something is fishy..!")
+        if await sp.sac._set_lock_state(device_id=device_id, mode=lock_state) and (
+            device := await sp.get_device(device_id=device_id)
+        ):
+            console.print(f"✅ {device.name} set to '{state}' 🐾")
+        else:
+            console.print(f"❌ setting to '{state}' may have worked but something is fishy..!")
 
         # await sp.sac.close_session()
 

@@ -44,6 +44,7 @@ from .const import (
     REFERER,
     SUREPY_USER_AGENT,
     USER_AGENT,
+    DEVICE_TAG_RESOURCE,
 )
 from .enums import Location, LockState
 from .exceptions import SurePetcareAuthenticationError, SurePetcareConnectionError, SurePetcareError
@@ -217,7 +218,7 @@ class SureAPIClient:
         if not self._auth_token:
             self._auth_token = await self.get_token()
 
-        if method not in ["GET", "PUT", "POST"]:
+        if method not in ["GET", "PUT", "POST", "DELETE"]:
             raise HTTPException(f"unknown http method: {method}")
 
         response_data = None
@@ -287,6 +288,10 @@ class SureAPIClient:
                     resource.replace("https://", ""),
                     responselen,
                 )
+
+                if method == "DELETE" and response.status == HTTPStatus.NO_CONTENT:
+                    # TODO: this does not return any data, is there a better way?
+                    return "DELETE 204 No Content"
 
                 return response_data
 
@@ -371,3 +376,25 @@ class SureAPIClient:
 
         # return None
         raise SurePetcareError("ERROR (UN)LOCKING DEVICE - PLEASE CHECK IMMEDIATELY!")
+
+    async def _add_tag_to_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
+        """Add the specified tag ID to the specified device ID"""
+        resource = DEVICE_TAG_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id)
+
+        if(
+            response := await self.call(
+                method="PUT", resource=resource
+            )
+        ):
+            return response
+
+    async def _remove_tag_from_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
+        """Removes the specified tag ID from the specified device ID"""
+        resource = DEVICE_TAG_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id)
+
+        if(
+            response := await self.call(
+                method="DELETE", resource=resource
+            )
+        ):
+            return response

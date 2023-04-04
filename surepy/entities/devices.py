@@ -128,6 +128,35 @@ class FeederBowl:
     def raw_data(self) -> dict[str, int | float | str]:
         return self._data
 
+class Tag:
+    """Tags assigned to a device."""
+
+    def __init__(self, data: dict[str, int | float | str], feeder: Feeder):
+        """Initialize a Sure Petcare sensor."""
+
+        self._data: dict[str, int | float | str] = data
+
+    @property
+    def id(self) -> int:
+        return int(self._data["id"])
+
+    def index(self) -> int:
+        return int(self._data["index"])
+
+    def profile(self) -> int:
+        return int(self._data["profile"])
+
+    def version(self) -> str:
+        return self._data["version"]
+
+    def created_at(self) -> str:
+        return str(self._data["created_at"])
+
+    def updated_at(self) -> str:
+        return self._data["updated_at"]
+
+    def raw_data(self) -> dict[str, int | float | str]:
+        return self._data
 
 class Feeder(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
@@ -139,6 +168,10 @@ class Feeder(SurepyDevice):
         self.bowls: dict[int, FeederBowl] = {}
 
         self.add_bowls()
+
+        self.tags: dict[int, Tag] = {}
+
+        self.add_tags()
 
     @property
     def bowl_count(self) -> int:
@@ -158,6 +191,10 @@ class Feeder(SurepyDevice):
         """Icon of the Felaqua."""
         return urlparse("https://surehub.io/assets/images/feeder-left-menu.png").geturl()
 
+    def add_tags(self) -> None:
+        if tags := self._data.get("tags"):
+            for tag in tags:
+                self.tags[tag["index"]] = Tag(data=tag, feeder=self)
 
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""

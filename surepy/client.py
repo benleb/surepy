@@ -141,7 +141,7 @@ class SureAPIClient:
         )
 
         return {
-            HOST: "app.api.surehub.io",
+            HOST: "app-api.blue.production.surehub.io",
             CONNECTION: "keep-alive",
             ACCEPT: f"{CONTENT_TYPE_JSON}, {CONTENT_TYPE_TEXT_PLAIN}, */*",
             ORIGIN: "https://surepetcare.io",

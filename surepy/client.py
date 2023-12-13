@@ -166,7 +166,7 @@ class SureAPIClient:
 
         try:
             raw_response: aiohttp.ClientResponse = await session.post(
-                url=AUTH_RESOURCE, data=authentication_data, headers=self._generate_headers()
+                url=AUTH_RESOURCE, json=authentication_data, headers=self._generate_headers()
             )
 
             if raw_response.status == HTTPStatus.OK:
@@ -216,6 +216,9 @@ class SureAPIClient:
         # if data:
         #     logger.debug("🐾   with data: %s", data)
 
+        if json and not data:
+            data = json
+
         if not self._auth_token:
             self._auth_token = await self.get_token()
 
@@ -237,7 +240,7 @@ class SureAPIClient:
 
                 await session.options(resource, headers=headers)
                 response: aiohttp.ClientResponse = await session.request(
-                    method, resource, headers=headers, data=data, json=json
+                    method, resource, headers=headers, json=data
                 )
 
                 if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:

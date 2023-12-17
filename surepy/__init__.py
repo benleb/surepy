@@ -293,6 +293,44 @@ class Surepy:
             )
         ) or {}
 
+    async def get_pet_aggregate_report(self, household_id: int, pet_id: int, from_date: str | None = None,  to_date: str | None = None) -> dict[str, Any]:
+        """
+        Retrieve the pet aggregate report.
+        from_date and to_date should be in format: YYYY-MM-DD
+        CAUTION: not supplying a from_date and to_date could result in responses that are 1 MB or more with 500+ datapoints
+        """
+        return (
+            await self.sac.call(
+                method="GET",
+                resource=f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}/aggregate?from={from_date}&to={to_date}",
+            )
+            if from_date and to_date
+            else await self.sac.call(
+                method="GET",
+                resource=f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}/aggregate",
+            )
+        ) or {}
+
+    async def get_pet_dry_food_consumption_report(self, household_id: int, pet_id: int, from_date: str, to_date: str, app_mode: bool = True) -> int | float:
+        """
+        Retrieve the dry food consumed in grams per pet in given time range.
+        from_date and to_date should be in format: YYYY-MM-DD
+        app_mode will add up food consumption how the app does it.
+           Turning app_mode off may give more accurate results, but the results  won't match the app
+        """
+        report = await self.get_pet_aggregate_report(household_id, pet_id, from_date, to_date)
+        datapoints = report.get('data').get('feeding').get('datapoints')
+        total_food_change_in_grams = 0
+        for datapoint in datapoints:
+            change = datapoint.get('weights')[0].get('change') # the first weight is always dry food. the second is wet food
+            if app_mode and change <= -1:
+                # The app only counts food changes less than or equal to -1 and rounds to nearest integer
+                total_food_change_in_grams += round(abs(change))
+            elif change < 0:
+                # Only counting changes that are negative as these represent feedings. Positive changes are presumed to be refills
+                total_food_change_in_grams += abs(change)
+        return total_food_change_in_grams
+
     async def get_pet(self, pet_id: int) -> Pet | None:
         if pet_id not in self.entities:
             await self.get_entities()

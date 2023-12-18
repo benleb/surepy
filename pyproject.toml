@@ -23,7 +23,7 @@ license = "MIT"
 name = "surepy"
 readme = "README.md"
 repository = "https://github.com/benleb/surepy"
-version = "0.8.0"
+version = "0.8.1"
 
 [tool.poetry.dependencies]
 aiohttp = {extras = ["speedups"], version = "^3.7.4"}
@@ -48,8 +48,8 @@ pytest-cov = "^2.12.1"
 surepy = 'surepy.surecli:cli'
 
 [tool.pylint.MASTER]
-ignore = ["tests", "const.py", "surecli"]
 disable = ["missing-module-docstring", "missing-class-docstring", "missing-function-docstring"]
+ignore = ["tests", "const.py", "surecli"]
 
 # Use a conservative default here; 2 should speed up most setups and not hurt
 # any too bad. Override on command line as appropriate.
@@ -57,7 +57,6 @@ jobs = 3
 load-plugins = [
   "pylint.extensions.code_style",
   "pylint.extensions.typing",
-  "pylint_strict_informational",
 ]
 
 [tool.pylint.BASIC]
@@ -103,7 +102,6 @@ exclude = '''
 include = '\.pyi?$'
 line-length = 100
 target_version = ["py39"]
-
 
 [tool.pytest.ini_options]
 addopts = "--cov --setup-show --code-highlight=yes --verbose"

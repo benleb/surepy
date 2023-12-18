@@ -172,7 +172,6 @@ class SureAPIClient:
             )
 
             if raw_response.status == HTTPStatus.OK:
-
                 response: dict[str, Any] = await raw_response.json()
 
                 if "data" in response and "token" in response["data"]:
@@ -246,7 +245,6 @@ class SureAPIClient:
                 )
 
                 if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
-
                     self.resources[resource] = response_data = await response.json()
 
                     if ETAG in response.headers:
@@ -335,7 +333,6 @@ class SureAPIClient:
         if (response := await self.call(method="POST", resource=resource, data=data)) and (
             response_data := response.get("data")
         ):
-
             desired_state = data.get("where")
             state = response_data.get("where")
 
@@ -372,7 +369,6 @@ class SureAPIClient:
                 method="PUT", resource=resource, device_id=device_id, data=data
             )
         ) and (response_data := response.get("data")):
-
             desired_state = data.get("locking")
             state = response_data.get("locking")
 
@@ -405,7 +401,6 @@ class SureAPIClient:
                 method="PUT", resource=resource, device_id=device_id, json=data
             )
         ) and (response_data := response.get("data")):
-
             desired_state = data.get("curfew")
             state = response_data.get("curfew")
 
@@ -418,22 +413,18 @@ class SureAPIClient:
 
     async def _add_tag_to_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
         """Add the specified tag ID to the specified device ID"""
-        resource = DEVICE_TAG_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id)
+        resource = DEVICE_TAG_RESOURCE.format(
+            BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id
+        )
 
-        if(
-            response := await self.call(
-                method="PUT", resource=resource
-            )
-        ):
+        if response := await self.call(method="PUT", resource=resource):
             return response
 
     async def _remove_tag_from_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
         """Removes the specified tag ID from the specified device ID"""
-        resource = DEVICE_TAG_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id)
+        resource = DEVICE_TAG_RESOURCE.format(
+            BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id
+        )
 
-        if(
-            response := await self.call(
-                method="DELETE", resource=resource
-            )
-        ):
+        if response := await self.call(method="DELETE", resource=resource):
             return response

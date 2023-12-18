@@ -32,9 +32,11 @@ from .const import (
     AUTHORIZATION,
     BASE_RESOURCE,
     CONNECTION,
+    CONTENT_TYPE,
     CONTENT_TYPE_JSON,
     CONTENT_TYPE_TEXT_PLAIN,
     CONTROL_RESOURCE,
+    DEVICE_TAG_RESOURCE,
     ETAG,
     HOST,
     HTTP_HEADER_X_REQUESTED_WITH,
@@ -44,7 +46,6 @@ from .const import (
     REFERER,
     SUREPY_USER_AGENT,
     USER_AGENT,
-    DEVICE_TAG_RESOURCE,
 )
 from .enums import Location, LockState
 from .exceptions import SurePetcareAuthenticationError, SurePetcareConnectionError, SurePetcareError
@@ -143,6 +144,7 @@ class SureAPIClient:
         return {
             HOST: "app.api.surehub.io",
             CONNECTION: "keep-alive",
+            CONTENT_TYPE: CONTENT_TYPE_JSON,
             ACCEPT: f"{CONTENT_TYPE_JSON}, {CONTENT_TYPE_TEXT_PLAIN}, */*",
             ORIGIN: "https://surepetcare.io",
             USER_AGENT: user_agent if user_agent else SUREPY_USER_AGENT,

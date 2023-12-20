@@ -68,7 +68,7 @@ def token_seems_valid(token: str) -> bool:
         bool: True if ``token`` seems valid
     """
     return (
-        (token is not None) and token.isascii() and token.isprintable() and (320 < len(token) < 448)
+        (token is not None) and token.isascii() and token.isprintable() and (320 < len(token))
     )
 
 

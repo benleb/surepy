@@ -297,7 +297,7 @@ class Surepy:
         """
         Retrieve the pet aggregate report.
         from_date and to_date should be in format: YYYY-MM-DD
-        CAUTION: not supplying a from_date and to_date could result in responses that are 1 MB or more with 500+ datapoints
+        CAUTION: not supplying a from_date and to_date could result in responses that are 1 MB or more with 500+ datapoints.
         """
         return (
             await self.sac.call(
@@ -311,23 +311,25 @@ class Surepy:
             )
         ) or {}
 
-    async def get_pet_dry_food_consumption_report(self, household_id: int, pet_id: int, from_date: str, to_date: str, app_mode: bool = True) -> int | float:
+    async def get_pet_food_consumption_report(self, household_id: int, pet_id: int, from_date: str, to_date: str, bowl_index: int = 0, app_mode: bool = True) -> int | float:
         """
         Retrieve the dry food consumed in grams per pet in given time range.
         from_date and to_date should be in format: YYYY-MM-DD
+            If you only want food consumption per day just pass in the same day twice (e.g. "2024-01-01" and "2024-01-01")
         app_mode will add up food consumption how the app does it.
-           Turning app_mode off may give more accurate results, but the results  won't match the app
+           Turning app_mode off may give more accurate results, but the results won't match the app.
+        bowl_index can be a 0 or a 1. If you only have one bowl the index is 0
         """
         report = await self.get_pet_aggregate_report(household_id, pet_id, from_date, to_date)
         datapoints = report.get('data').get('feeding').get('datapoints')
         total_food_change_in_grams = 0
         for datapoint in datapoints:
-            change = datapoint.get('weights')[0].get('change') # the first weight is always dry food. the second is wet food
+            change = datapoint.get('weights')[bowl_index].get('change')
             if app_mode and change <= -1:
-                # The app only counts food changes less than or equal to -1 and rounds to nearest integer
+                # The app only counts food changes less than or equal to -1 and rounds to nearest integer.
                 total_food_change_in_grams += round(abs(change))
             elif change < 0:
-                # Only counting changes that are negative as these represent feedings. Positive changes are presumed to be refills
+                # Only counting changes that are negative as these represent feedings. Positive changes are presumed to be refills.
                 total_food_change_in_grams += abs(change)
         return total_food_change_in_grams
 

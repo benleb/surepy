@@ -67,9 +67,7 @@ def token_seems_valid(token: str) -> bool:
     Returns:
         bool: True if ``token`` seems valid
     """
-    return (
-        (token is not None) and token.isascii() and token.isprintable() and (320 < len(token))
-    )
+    return (token is not None) and token.isascii() and token.isprintable() and (320 < len(token))
 
 
 def find_token() -> str | None:
@@ -240,8 +238,9 @@ class SureAPIClient:
                     # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
 
                 await session.options(resource, headers=headers)
+                params = {"json": data} if method != "GET" else {"params": data}
                 response: aiohttp.ClientResponse = await session.request(
-                    method, resource, headers=headers, json=data
+                    method, resource, headers=headers, **params
                 )
 
                 if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:

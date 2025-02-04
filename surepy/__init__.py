@@ -280,16 +280,29 @@ class Surepy:
             method="GET", resource=NOTIFICATION_RESOURCE, timeout=API_TIMEOUT * 2
         )
 
-    async def get_report(self, household_id: int, pet_id: int | None = None) -> dict[str, Any]:
+    async def get_report(
+        self,
+        household_id: int,
+        pet_id: int,
+        aggregate: bool = False,
+        from_datetime: datetime | None = None,
+        to_datetime: datetime | None = None,
+    ) -> dict[str, Any]:
         """Retrieve the pet/household report."""
+        data = {} if any([from_datetime, to_datetime]) else None
+        if from_datetime is not None:
+            data["from"] = from_datetime.isoformat()
+        if to_datetime is not None:
+            data["to"] = to_datetime.isoformat()
+
+        resource = f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}"
+        resource += "/aggregate" if aggregate else ""
+
         return (
             await self.sac.call(
                 method="GET",
-                resource=f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}",
-            )
-            if pet_id
-            else await self.sac.call(
-                method="GET", resource=f"{BASE_RESOURCE}/report/household/{household_id}"
+                resource=resource,
+                data=data,
             )
         ) or {}
 

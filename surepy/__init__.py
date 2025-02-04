@@ -355,7 +355,12 @@ class Surepy:
 
         return attributes
 
-    async def get_entities(self, refresh: bool = False) -> dict[int, SurepyEntity]:
+    async def get_entities(
+        self,
+        refresh: bool = False,
+        activities: bool = False,
+        range: tuple[datetime, datetime] | None = None,
+    ) -> dict[int, SurepyEntity]:
         """Get all Entities (Pets/Devices)"""
 
         household_ids: set[int] = set()
@@ -395,7 +400,23 @@ class Surepy:
             elif entity_type == EntityType.HUB:
                 surepy_entities[entity_id] = Hub(data=entity)
             elif entity_type == EntityType.PET:
-                surepy_entities[entity_id] = Pet(data=entity)
+                if activities:
+                    if range and len(range) == 2:
+                        from_datetime, to_datetime = range
+                    else:
+                        from_datetime, to_datetime = None
+
+                    raw_activities = self.get_report(
+                        entity.get("household_id", 0),
+                        entity.get("id", 0),
+                        aggregate=True,
+                        from_datetime=from_datetime,
+                        to_datetime=to_datetime,
+                    )
+
+                    surepy_entities[entity_id] = Pet(data=entity, activities=raw_activities)
+                else:
+                    surepy_entities[entity_id] = Pet(data=entity)
 
             else:
                 logger.warning(

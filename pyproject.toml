@@ -1,5 +1,5 @@
 [tool.poetry]
-authors = ["Ben Lebherz <git@benleb.de>"]
+authors = ["Ben Lebherz <git@benleb.de>", "LP <lp55@visum.pt>"]
 classifiers = [
   "Topic :: Home Automation",
   "Topic :: Software Development",

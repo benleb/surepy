@@ -69,6 +69,14 @@ class StateDrinking:
 
 
 @dataclass
+class DrinkingActivity:
+    start: datetime
+    finish: datetime
+    duration: int
+    amount: int
+
+
+@dataclass
 class PetLocationData:
 
     where: Location

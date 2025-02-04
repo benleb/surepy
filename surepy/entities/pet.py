@@ -12,9 +12,17 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from surepy.entities import PetActivity, PetLocation, StateDrinking, StateFeeding, SurepyEntity
+from surepy.entities import (
+    PetActivity,
+    PetLocation,
+    StateDrinking,
+    StateFeeding,
+    SurepyEntity,
+    DrinkingActivity,
+)
 from surepy.entities.states import PetState
 from surepy.enums import EntityType, FoodType, Location
+from datetime import datetime
 
 
 class Pet(SurepyEntity):
@@ -30,7 +38,7 @@ class Pet(SurepyEntity):
 
     """
 
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self, data: dict[str, Any], activities: dict[str, Any] = {}):
 
         super().__init__(data=data)
 
@@ -38,6 +46,7 @@ class Pet(SurepyEntity):
 
         self._type: EntityType = EntityType.PET
         self._data: dict[str, Any] = data
+        self._activities: dict[str, Any] = activities
 
         self._name = str(name) if (name := self._data.get("name")) else "Unnamed"
 
@@ -133,3 +142,18 @@ class Pet(SurepyEntity):
     @property
     def last_drink(self) -> datetime | None:
         return self.drinking.at if self.drinking else None
+
+    @property
+    def drinking_activity(self) -> list[DrinkingActivity] | None:
+        if datapoints := self._activities.get("drinking", {}).get("datapoints", {}):
+            return [
+                DrinkingActivity(
+                    start=datetime.fromisoformat(data.get("from")),
+                    end=datetime.fromisoformat(data.get("to")),
+                    duration=data.get("duration", 0),
+                    amount=data.get("weights", {}).get("change", 0) * -1,
+                )
+                for data in datapoints
+            ]
+
+        return None

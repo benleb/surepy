@@ -1,6 +1,6 @@
 # [![surepy](https://socialify.git.ci/benleb/surepy/image?description=1&descriptionEditable=Library%20%26%20CLI%20to%20interact%20with%20the%20Sure%20Petcare%20API%20to%20monitor%20and%20control%20the%20Sure%20Petcare%20Pet%20Door%2FCat%20Flap%20Connect%20%F0%9F%9A%AA%20and%20the%20Pet%20Feeder%20Connect%20%F0%9F%8D%BD&font=KoHo&forks=1&language=1&logo=https%3A%2F%2Femojipedia-us.s3.dualstack.us-west-1.amazonaws.com%2Fthumbs%2F240%2Fapple%2F237%2Fpaw-prints_1f43e.png&pulls=1&stargazers=1)](https://github.com/benleb/surepy)
 
-Library & CLI to interact with the Sure Petcare API. [**surepy**](https://github.com/benleb/surepy) lets you monitor and control the Pet Door/Cat Flap Connect 🚪 and the Pet Feeder Connect 🍽 by [Sure Petcare](https://www.surepetcare.com).
+Library & CLI to interact with the Sure Petcare API. [**surepy**](https://github.com/lp55/surepy) lets you monitor and control the Pet Door/Cat Flap Connect 🚪 and the Pet Feeder Connect 🍽 by [Sure Petcare](https://www.surepetcare.com).
 
 ---
 
@@ -17,7 +17,7 @@ Library & CLI to interact with the Sure Petcare API. [**surepy**](https://github
 
 ## Getting Started
 
-[**surepy**](https://github.com/benleb/surepy) is available via [pypi.org](https://pypi.org)
+[**surepy**](https://github.com/lp55/surepy) is available via [pypi.org](https://pypi.org)
 
 ```bash
 python3 -m pip install --upgrade surepy
@@ -33,7 +33,7 @@ Usage: surepy [OPTIONS] COMMAND [ARGS]...
 
   surepy cli 🐾
 
-  https://github.com/benleb/surepy
+  https://github.com/benleb/lp55
 
 Options:
   --version         show surepy version
@@ -62,10 +62,10 @@ from os import environ
 from pprint import pprint
 from typing import Dict, List
 
-from surepy import Surepy
-from surepy.entities import SurepyEntity
-from surepy.entities.devices import SurepyDevice
-from surepy.entities.pet import Pet
+from surepy2 import Surepy
+from surepy2.entities import SurepyEntity
+from surepy2.entities.devices import SurepyDevice
+from surepy2.entities.pet import Pet
 
 
 async def main():

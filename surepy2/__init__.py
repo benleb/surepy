@@ -21,8 +21,8 @@ import aiohttp
 
 from rich.console import Console
 
-from surepy.client import SureAPIClient, find_token, token_seems_valid
-from surepy.const import (
+from surepy2.client import SureAPIClient, find_token, token_seems_valid
+from surepy2.const import (
     API_TIMEOUT,
     ATTRIBUTES_RESOURCE as ATTR_RESOURCE,
     BASE_RESOURCE,
@@ -31,10 +31,10 @@ from surepy.const import (
     NOTIFICATION_RESOURCE,
     TIMELINE_RESOURCE,
 )
-from surepy.entities import SurepyEntity
-from surepy.entities.devices import Feeder, Felaqua, Flap, Hub, SurepyDevice
-from surepy.entities.pet import Pet
-from surepy.enums import EntityType
+from surepy2.entities import SurepyEntity
+from surepy2.entities.devices import Feeder, Felaqua, Flap, Hub, SurepyDevice
+from surepy2.entities.pet import Pet
+from surepy2.enums import EntityType
 
 
 __version__ = version(__name__)
@@ -406,7 +406,7 @@ class Surepy:
                     else:
                         from_datetime, to_datetime = None
 
-                    raw_activities = self.get_report(
+                    raw_activities = await self.get_report(
                         entity.get("household_id", 0),
                         entity.get("id", 0),
                         aggregate=True,

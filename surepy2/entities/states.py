@@ -12,7 +12,7 @@ from abc import ABC
 from datetime import datetime
 from typing import Any
 
-from surepy.enums import Location
+from surepy2.enums import Location
 
 
 class PetState(ABC):

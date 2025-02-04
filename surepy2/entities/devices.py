@@ -14,9 +14,9 @@ from abc import ABC
 from typing import Any
 from urllib.parse import urlparse
 
-from surepy.const import SURE_BATT_VOLTAGE_FULL, SURE_BATT_VOLTAGE_LOW
-from surepy.entities import SurepyEntity
-from surepy.enums import BowlPosition, FoodType, LockState
+from surepy2.const import SURE_BATT_VOLTAGE_FULL, SURE_BATT_VOLTAGE_LOW
+from surepy2.entities import SurepyEntity
+from surepy2.enums import BowlPosition, FoodType, LockState
 
 
 # get a logger
@@ -128,6 +128,7 @@ class FeederBowl:
     def raw_data(self) -> dict[str, int | float | str]:
         return self._data
 
+
 class Tag:
     """Tags assigned to a device."""
 
@@ -157,6 +158,7 @@ class Tag:
 
     def raw_data(self) -> dict[str, int | float | str]:
         return self._data
+
 
 class Feeder(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
@@ -195,6 +197,7 @@ class Feeder(SurepyDevice):
         if tags := self._data.get("tags"):
             for tag in tags:
                 self.tags[tag["index"]] = Tag(data=tag, feeder=self)
+
 
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""

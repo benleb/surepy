@@ -1,5 +1,5 @@
 [tool.poetry]
-authors = ["Ben Lebherz <git@benleb.de>", "LP <lp55@visum.pt>"]
+authors = ["Ben Lebherz <git@benleb.de>", "lp55 <lp55@visum.pt>"]
 classifiers = [
   "Topic :: Home Automation",
   "Topic :: Software Development",
@@ -17,13 +17,13 @@ classifiers = [
 ]
 description = "Library to interact with the flaps & doors from Sure Petcare."
 documentation = "https://surepy.readthedocs.io"
-homepage = "https://github.com/benleb/surepy"
+homepage = "https://github.com/lp55/surepy"
 keywords = ["cat", "surepetcare", "home-assistant"]
 license = "MIT"
-name = "surepy"
+name = "surepy2"
 readme = "README.md"
-repository = "https://github.com/benleb/surepy"
-version = "0.9.0"
+repository = "https://github.com/lp55/surepy"
+version = "0.9.5"
 
 [tool.poetry.dependencies]
 aiohttp = {extras = ["speedups"], version = "^3.7.4"}
@@ -45,7 +45,7 @@ pytest = "^6.2.1"
 pytest-cov = "^2.12.1"
 
 [tool.poetry.scripts]
-surepy = 'surepy.surecli:cli'
+surepy2 = 'surepy2.surecli:cli'
 
 [tool.pylint.MASTER]
 disable = ["missing-module-docstring", "missing-class-docstring", "missing-function-docstring"]
@@ -109,11 +109,11 @@ minversion = "6.0"
 testpaths = ["tests"]
 
 [tool.coverage.paths]
-source = ["surepy"]
+source = ["surepy2"]
 
 [tool.coverage.run]
 branch = true
-source = ["surepy"]
+source = ["surepy2"]
 
 [tool.coverage.report]
 show_missing = true

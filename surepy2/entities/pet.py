@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from surepy.entities import (
+from surepy2.entities import (
     PetActivity,
     PetLocation,
     StateDrinking,
@@ -20,8 +20,8 @@ from surepy.entities import (
     SurepyEntity,
     DrinkingActivity,
 )
-from surepy.entities.states import PetState
-from surepy.enums import EntityType, FoodType, Location
+from surepy2.entities.states import PetState
+from surepy2.enums import EntityType, FoodType, Location
 from datetime import datetime
 
 

@@ -45,8 +45,7 @@ class Pet(SurepyEntity):
         self.pet_id: int = int(data["id"])
 
         self._type: EntityType = EntityType.PET
-        self._data: dict[str, Any] = data
-        self._activities: dict[str, Any] = activities
+        self._data: dict[str, Any] = data | activities
 
         self._name = str(name) if (name := self._data.get("name")) else "Unnamed"
 
@@ -145,7 +144,7 @@ class Pet(SurepyEntity):
 
     @property
     def drinking_activity(self) -> list[DrinkingActivity] | None:
-        if datapoints := self._activities.get("drinking", {}).get("datapoints", {}):
+        if datapoints := self._data.get("drinking", {}).get("datapoints", {}):
             return [
                 DrinkingActivity(
                     start=datetime.fromisoformat(data.get("from")),

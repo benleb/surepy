@@ -406,16 +406,17 @@ class Surepy:
                     else:
                         from_datetime, to_datetime = None
 
-                    if raw_activities := await self.get_report(
-                        entity.get("household_id", 0),
-                        entity.get("id", 0),
-                        aggregate=True,
-                        from_datetime=from_datetime,
-                        to_datetime=to_datetime,
-                    ):
-                        surepy_entities[entity_id] = Pet(
-                            data=entity, activities=raw_activities.get("data", {})
+                    if response := (
+                        await self.get_report(
+                            entity.get("household_id", 0),
+                            entity.get("id", 0),
+                            aggregate=True,
+                            from_datetime=from_datetime,
+                            to_datetime=to_datetime,
                         )
+                    ):
+                        raw_activities = response.get("data", {})
+                        surepy_entities[entity_id] = Pet(data=entity, activities=raw_activities)
                     else:
                         surepy_entities[entity_id] = Pet(data=entity)
 
@@ -432,8 +433,8 @@ class Surepy:
             self.entities[entity_id] = surepy_entities[entity_id]
 
         # fetch additional data about movement, feeding & drinking
-        for household_id in household_ids:
-            await self.get_actions(household_id=household_id)
+        # for household_id in household_ids:
+        #    await self.get_actions(household_id=household_id)
         for household_id in felaqua_household_ids:
             await self.get_latest_anonymous_drinks(household_id=household_id)
 

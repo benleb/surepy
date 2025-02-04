@@ -71,7 +71,7 @@ class StateDrinking:
 @dataclass
 class DrinkingActivity:
     start: datetime
-    finish: datetime
+    end: datetime
     duration: int
     amount: int
 

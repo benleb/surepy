@@ -151,7 +151,7 @@ class Pet(SurepyEntity):
                     start=datetime.fromisoformat(data.get("from")),
                     end=datetime.fromisoformat(data.get("to")),
                     duration=data.get("duration", 0),
-                    amount=data.get("weights", {}).get("change", 0) * -1,
+                    amount=data.get("weights", {})[0].get("change", 0) * -1,
                 )
                 for data in datapoints
             ]

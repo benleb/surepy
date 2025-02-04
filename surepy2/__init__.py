@@ -406,15 +406,19 @@ class Surepy:
                     else:
                         from_datetime, to_datetime = None
 
-                    raw_activities = await self.get_report(
+                    if raw_activities := await self.get_report(
                         entity.get("household_id", 0),
                         entity.get("id", 0),
                         aggregate=True,
                         from_datetime=from_datetime,
                         to_datetime=to_datetime,
-                    )
+                    ):
+                        surepy_entities[entity_id] = Pet(
+                            data=entity, activities=raw_activities.get("data", {})
+                        )
+                    else:
+                        surepy_entities[entity_id] = Pet(data=entity)
 
-                    surepy_entities[entity_id] = Pet(data=entity, activities=raw_activities)
                 else:
                     surepy_entities[entity_id] = Pet(data=entity)
 

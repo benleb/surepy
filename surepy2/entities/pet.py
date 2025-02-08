@@ -153,6 +153,8 @@ class Pet(SurepyEntity):
                     amount=data.get("weights", {})[0].get("change", 0) * -1,
                 )
                 for data in datapoints
+                # ignores bad (positive change) data
+                if data.get("weights", {})[0].get("change", 0) < 0
             ]
 
         return None

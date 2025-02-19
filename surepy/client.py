@@ -67,9 +67,7 @@ def token_seems_valid(token: str) -> bool:
     Returns:
         bool: True if ``token`` seems valid
     """
-    return (
-        (token is not None) and token.isascii() and token.isprintable() and (320 < len(token))
-    )
+    return (token is not None) and token.isascii() and token.isprintable() and (320 < len(token))
 
 
 def find_token() -> str | None:
@@ -228,76 +226,79 @@ class SureAPIClient:
 
         response_data = None
 
-        session = self._session if self._session else aiohttp.ClientSession()
-
         try:
-            with async_timeout.timeout(self._api_timeout):
-                headers = self._generate_headers()
+            session = (
+                self._session
+                if self._session
+                else aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self._api_timeout))
+            )
 
-                # use etag if available
-                if resource in self._etags:
-                    headers[ETAG] = str(self._etags.get(resource))
-                    # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
+            headers = self._generate_headers()
 
-                await session.options(resource, headers=headers)
-                response: aiohttp.ClientResponse = await session.request(
-                    method, resource, headers=headers, json=data
+            # use etag if available
+            if resource in self._etags:
+                headers[ETAG] = str(self._etags.get(resource))
+                # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
+
+            await session.options(resource, headers=headers)
+            response: aiohttp.ClientResponse = await session.request(
+                method, resource, headers=headers, json=data, timeout=self._api_timeout
+            )
+
+            if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
+                self.resources[resource] = response_data = await response.json()
+
+                if ETAG in response.headers:
+                    self._etags[resource] = response.headers[ETAG].strip('"')
+
+            elif response.status == HTTPStatus.NOT_MODIFIED:
+                # Etag header matched, no new data available
+                logger.debug(
+                    "🐾 \x1b[38;2;0;255;0m·\x1b[0m %d: etag matched - no new data available",
+                    response.status,
                 )
 
-                if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
-                    self.resources[resource] = response_data = await response.json()
-
-                    if ETAG in response.headers:
-                        self._etags[resource] = response.headers[ETAG].strip('"')
-
-                elif response.status == HTTPStatus.NOT_MODIFIED:
-                    # Etag header matched, no new data available
-                    logger.debug(
-                        "🐾 \x1b[38;2;0;255;0m·\x1b[0m %d: etag matched - no new data available",
-                        response.status,
-                    )
-
-                elif response.status == HTTPStatus.UNAUTHORIZED:
-                    logger.error(
-                        "🐾 \x1b[38;2;255;26;102m·\x1b[0m %s %s: %d | %s",
-                        method,
-                        resource.replace("https://", ""),
-                        response.status,
-                        response,
-                    )
-                    self._auth_token = None
-                    if not second_try:
-                        token_refreshed = await self.get_token()
-                        if token_refreshed:
-                            await self.call(method="GET", resource=resource, second_try=True)
-
-                    raise SurePetcareAuthenticationError()
-
-                else:
-                    logger.info(
-                        "🐾 \x1b[38;2;255;0;255m·\x1b[0m %s %s: %d | %s",
-                        method,
-                        resource.replace("https://", ""),
-                        response.status,
-                        response,
-                    )
-
-                if response_data:
-                    responselen = len(response_data.get("data", []))
-                else:
-                    responselen = 0
-                logger.debug(
-                    "🐾 \x1b[38;2;0;255;0m·\x1b[0m %s %s | %d",
+            elif response.status == HTTPStatus.UNAUTHORIZED:
+                logger.error(
+                    "🐾 \x1b[38;2;255;26;102m·\x1b[0m %s %s: %d | %s",
                     method,
                     resource.replace("https://", ""),
-                    responselen,
+                    response.status,
+                    response,
+                )
+                self._auth_token = None
+                if not second_try:
+                    token_refreshed = await self.get_token()
+                    if token_refreshed:
+                        await self.call(method="GET", resource=resource, second_try=True)
+
+                raise SurePetcareAuthenticationError()
+
+            else:
+                logger.info(
+                    "🐾 \x1b[38;2;255;0;255m·\x1b[0m %s %s: %d | %s",
+                    method,
+                    resource.replace("https://", ""),
+                    response.status,
+                    response,
                 )
 
-                if method == "DELETE" and response.status == HTTPStatus.NO_CONTENT:
-                    # TODO: this does not return any data, is there a better way?
-                    return "DELETE 204 No Content"
+            if response_data:
+                responselen = len(response_data.get("data", []))
+            else:
+                responselen = 0
+            logger.debug(
+                "🐾 \x1b[38;2;0;255;0m·\x1b[0m %s %s | %d",
+                method,
+                resource.replace("https://", ""),
+                responselen,
+            )
 
-                return response_data
+            if method == "DELETE" and response.status == HTTPStatus.NO_CONTENT:
+                # TODO: this does not return any data, is there a better way?
+                return "DELETE 204 No Content"
+
+            return response_data
 
         except (asyncio.TimeoutError, aiohttp.ClientError) as error:
             logger.error("Can not load data from %s", resource)

@@ -124,7 +124,7 @@ class SureAPIClient:
             self._auth_token = token
         else:
             # no valid credentials/token
-            SurePetcareAuthenticationError("sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯")
+            raise SurePetcareAuthenticationError("sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯")
 
         # storage for received api data
         self.resources: dict[str, Any] = {}

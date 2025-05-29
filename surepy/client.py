@@ -57,7 +57,6 @@ TOKEN_FILE = Path("~/.surepy.token").expanduser()
 # get a logger
 logger: Logger = logging.getLogger(__name__)
 
-
 def token_seems_valid(token: str) -> bool:
     """check validity of an api token based on its characters and length
 
@@ -239,7 +238,7 @@ class SureAPIClient:
             if resource in self._etags:
                 headers[ETAG] = str(self._etags.get(resource))
                 # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
-
+            
             await session.options(resource, headers=headers)
             response: aiohttp.ClientResponse = await session.request(
                 method, resource, headers=headers, json=data, timeout=self._api_timeout
@@ -429,3 +428,108 @@ class SureAPIClient:
 
         if response := await self.call(method="DELETE", resource=resource):
             return response
+
+    async def set_indoor_pet(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
+        """Sets a specific pet's profile to "indoor only" type by assigning profile_id 3."""
+        logger.debug(
+            f"Attempting to set pet {tag_id} on device {device_id} to 'indoor only' (profile_id=3)."
+        )
+
+        # The URL structure for updating a tag's profile on a device
+        # matches DEVICE_TAG_RESOURCE from const.py.
+        resource = DEVICE_TAG_RESOURCE.format(
+            BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id
+        )
+
+        data = {
+            "profile": 3
+        }
+
+        try:
+            response = await self.call(
+                method="PUT",
+                resource=resource,
+                json=data,  # Send the profile_id in the JSON body
+                device_id=device_id, # Passed for context/logging in self.call
+            )
+
+            # Assuming the API response for a successful update will return the updated profile_id
+            # or data that includes it. Adjust this check if the API returns something different.
+            if response and response.get("data", {}).get("profile") == 3:
+                logger.info(
+                    f"Successfully set pet {tag_id} on device {device_id} to 'indoor only'."
+                )
+                return response
+            elif response:
+                logger.warning(
+                    f"API call for pet {tag_id} on device {device_id} returned status OK but 'profile' not confirmed as 3 in response: {response}"
+                )
+                return response
+            else:
+                logger.error(
+                    f"Failed to set pet {tag_id} on device {device_id} to 'indoor only': No valid response data."
+                )
+                raise SurePetcareError(
+                    f"Setting 'indoor_only' for pet {tag_id} on device {device_id} failed: No valid response."
+                )
+
+        except SurePetcareError:
+            raise
+        except Exception as e:
+            logger.exception(
+                f"An unexpected error occurred while setting pet {tag_id} on device {device_id} to 'indoor only'."
+            )
+            raise SurePetcareError(
+                f"Unexpected error setting 'indoor_only' for pet {tag_id} on device {device_id}: {e}"
+            ) from e
+
+
+    async def set_outdoor_pet(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
+        """Sets a specific pet's profile to "outdoor" type by assigning profile_id 2."""
+        logger.debug(
+            f"Attempting to set pet {tag_id} on device {device_id} to 'outdoor' (profile_id=2)."
+        )
+
+        resource = DEVICE_TAG_RESOURCE.format(
+            BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id
+        )
+
+        data = {
+            "profile": 2
+        }
+
+        try:
+            response = await self.call(
+                method="PUT",
+                resource=resource,
+                json=data,
+                device_id=device_id,
+            )
+
+            if response and response.get("data", {}).get("profile") == 2:
+                logger.info(
+                    f"Successfully set pet {tag_id} on device {device_id} to 'outdoor'."
+                )
+                return response
+            elif response:
+                logger.warning(
+                    f"API call for pet {tag_id} on device {device_id} returned status OK but 'profile' not confirmed as 2 in response: {response}"
+                )
+                return response
+            else:
+                logger.error(
+                    f"Failed to set pet {tag_id} on device {device_id} to 'outdoor': No valid response data."
+                )
+                raise SurePetcareError(
+                    f"Setting 'outdoor' for pet {tag_id} on device {device_id} failed: No valid response."
+                )
+
+        except SurePetcareError:
+            raise
+        except Exception as e:
+            logger.exception(
+                f"An unexpected error occurred while setting pet {tag_id} on device {device_id} to 'outdoor'."
+            )
+            raise SurePetcareError(
+                f"Unexpected error setting 'outdoor' for pet {tag_id} on device {device_id}: {e}"
+            ) from e

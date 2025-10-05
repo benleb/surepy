@@ -299,8 +299,7 @@ class Surepy:
 
         if self.entities[pet_id].type == EntityType.PET:
             return self.entities[pet_id]  # type: ignore
-        else:
-            return None
+        return None
 
     async def get_pets(self) -> list[Pet]:
         return [pet for pet in (await self.get_entities()).values() if isinstance(pet, Pet)]
@@ -311,8 +310,7 @@ class Surepy:
 
         if self.entities[device_id].type != EntityType.PET:
             return self.entities[device_id]  # type: ignore
-        else:
-            return None
+        return None
 
     async def get_devices(self) -> list[SurepyDevice]:
         return [

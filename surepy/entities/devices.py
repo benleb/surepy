@@ -128,6 +128,7 @@ class FeederBowl:
     def raw_data(self) -> dict[str, int | float | str]:
         return self._data
 
+
 class Tag:
     """Tags assigned to a device."""
 
@@ -157,6 +158,7 @@ class Tag:
 
     def raw_data(self) -> dict[str, int | float | str]:
         return self._data
+
 
 class Feeder(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
@@ -195,6 +197,7 @@ class Feeder(SurepyDevice):
         if tags := self._data.get("tags"):
             for tag in tags:
                 self.tags[tag["index"]] = Tag(data=tag, feeder=self)
+
 
 class Felaqua(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""

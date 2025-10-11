@@ -10,7 +10,6 @@ classifiers = [
   "Environment :: Console",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Development Status :: 4 - Beta",
   "Development Status :: 5 - Production/Stable",
@@ -26,24 +25,24 @@ repository = "https://github.com/benleb/surepy"
 version = "0.9.0"
 
 [tool.poetry.dependencies]
-aiohttp = {extras = ["speedups"], version = "^3.7.4"}
+aiohttp = {extras = ["speedups"], version = ">=3.7.4"}
 async-timeout = ">=3.0.1,<5.0"
 click = ">=7.1.2,<9.0.0"
-python = "==3.*,>=3.8.0"
-requests = "^2.24.0"
-rich = "^10.1.0"
+python = "==3.*,>=3.9.0"
+requests = ">=2.24.0"
+rich = ">=10.1.0"
 
 [tool.poetry.dev-dependencies]
-bandit = "^1.6.2"
-black = "^21.9b0"
-coverage = {extras = ["toml"], version = "^5.3.1"}
-isort = "^5.9.3"
-mypy = "^0.910"
-pycodestyle = "^2.6.0"
-pylint = "^2.10.2"
-pytest = "^6.2.1"
-pytest-cov = "^2.12.1"
-pytest-asyncio = "^0.25.3"
+bandit = ">=1.6.2"
+black = ">=21.9b0"
+coverage = {extras = ["toml"], version = ">=5.3.1"}
+isort = ">=5.9.3"
+mypy = ">=0.910"
+pycodestyle = ">=2.6.0"
+pylint = ">=2.10.2"
+pytest = ">=6.2.1"
+pytest-cov = ">=2.12.1"
+pytest-asyncio = ">=0.25.3"
 
 [tool.poetry.scripts]
 surepy = 'surepy.surecli:cli'

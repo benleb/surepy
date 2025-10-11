@@ -521,6 +521,7 @@ async def position(
 
         # await sp.sac.close_session()
 
+
 @cli.command()
 @click.pass_context
 @click.option(
@@ -538,7 +539,13 @@ async def position(
     "-t", "--token", required=False, type=str, help="sure petcare api token", hide_input=True
 )
 @coro
-async def feederassign(ctx: click.Context, device_id: int, mode: str, pet_id: int | None = None, token: str | None = None) -> None:
+async def feederassign(
+    ctx: click.Context,
+    device_id: int,
+    mode: str,
+    pet_id: int | None = None,
+    token: str | None = None,
+) -> None:
     """feeder pet assignment"""
 
     token = token if token else ctx.obj.get("token", None)
@@ -577,13 +584,16 @@ async def feederassign(ctx: click.Context, device_id: int, mode: str, pet_id: in
                 if pet.id == pet_id:
                     for tag in feeder.tags.values():
                         if tag.id == pet.tag_id:
-                            if await sp.sac._remove_tag_from_device(device_id=device_id, tag_id=pet.tag_id):
+                            if await sp.sac._remove_tag_from_device(
+                                device_id=device_id, tag_id=pet.tag_id
+                            ):
                                 console.print(f"✅ {pet.name} removed from '{feeder.name}' 🐾")
                                 return
                     console.print("Pet is not assigned to this feeder.")
         else:
             return
         # await sp.sac.close_session()
+
 
 if __name__ == "__main__":
     cli(obj={})

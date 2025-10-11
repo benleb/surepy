@@ -148,7 +148,7 @@ async def token(ctx: click.Context, user: str, password: str) -> None:
         # await sp.sac.close_session()
 
     console.rule(f"[bold]{user}[/] [#ff1d5e]·[/] [bold]Token[/]", style="#ff1d5e")
-    console.print(f"[bold]{token}[/]", soft_wrap=True)
+    console.print(f"[bold]{surepy_token}[/]", soft_wrap=True)
     console.rule(style="#ff1d5e")
     print()
 

@@ -22,6 +22,9 @@ from uuid import uuid1
 
 import aiohttp
 
+from surepy.entities.devices import Flap
+from surepy.entities.pet import Pet
+
 from .const import (
     ACCEPT,
     ACCEPT_ENCODING,
@@ -42,6 +45,8 @@ from .const import (
     ORIGIN,
     PET_RESOURCE,
     POSITION_RESOURCE,
+    PROFILE_INDOOR,
+    PROFILE_OUTDOOR,
     REFERER,
     SUREPY_USER_AGENT,
     USER_AGENT,
@@ -417,13 +422,40 @@ class SureAPIClient:
         # return None
         raise SurePetcareError("ERROR SETTING CURFEW - PLEASE CHECK IMMEDIATELY!")
 
-    async def _add_tag_to_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
+    async def set_device_tag_profile(
+        self, device_id: int, tag_id: int, profile: int
+    ) -> dict[str, Any] | None:
+        """Set the profile for a tag on a device"""
+        data = {"profile": profile}
+
+        if response := await self._add_tag_to_device(
+            device_id=device_id, tag_id=tag_id, data=data
+        ):
+            return response
+
+        raise SurePetcareError(f"ERROR SETTING PROFILE FOR TAG {tag_id} ON DEVICE {device_id}")
+
+    async def set_pet_indoor_mode(self, device: Flap, pet: Pet) -> dict[str, Any] | None:
+        """Set pet to indoor-only mode on a device (can enter but not exit)"""
+        if pet.tag_id is None:
+            raise SurePetcareError(f"Pet {pet.name} does not have a tag_id")
+        return await self.set_device_tag_profile(device.id, pet.tag_id, profile=PROFILE_INDOOR)
+
+    async def set_pet_outdoor_mode(self, device: Flap, pet: Pet) -> dict[str, Any] | None:
+        """Set pet to outdoor/normal mode on a device (can enter and exit)"""
+        if pet.tag_id is None:
+            raise SurePetcareError(f"Pet {pet.name} does not have a tag_id")
+        return await self.set_device_tag_profile(device.id, pet.tag_id, profile=PROFILE_OUTDOOR)
+
+    async def _add_tag_to_device(
+        self, device_id: int, tag_id: int, data: dict[str, Any] | None = None
+    ) -> dict[str, Any] | None:
         """Add the specified tag ID to the specified device ID"""
         resource = DEVICE_TAG_RESOURCE.format(
             BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id
         )
 
-        if response := await self.call(method="PUT", resource=resource):
+        if response := await self.call(method="PUT", resource=resource, json=data):
             return response
         return None
 

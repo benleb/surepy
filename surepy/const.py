@@ -24,6 +24,9 @@ POSITION_RESOURCE: str = "{BASE_RESOURCE}/pet/{pet_id}/position"
 ATTRIBUTES_RESOURCE: str = f"{BASE_RESOURCE}/start"
 DEVICE_TAG_RESOURCE: str = "{BASE_RESOURCE}/device/{device_id}/tag/{tag_id}"
 
+# Pet profile modes for device tags
+PROFILE_OUTDOOR = 2  # pet can enter and exit
+PROFILE_INDOOR = 3  # pet can enter but cannot exit
 
 API_TIMEOUT = 45
 

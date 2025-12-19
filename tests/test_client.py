@@ -1,19 +1,11 @@
 from pathlib import Path
-import asyncio
 import pytest
-import async_timeout
 import pprint
-from aiohttp import ClientSession, TCPConnector
 from shutil import copyfile
 from datetime import datetime, timedelta
 import configparser
 
 from surepy import Surepy
-from surepy.client import SureAPIClient
-from surepy.entities import SurepyEntity
-from surepy.entities.devices import Feeder, Felaqua, Flap, Hub, SurepyDevice
-from surepy.entities.pet import Pet
-from surepy.enums import EntityType
 
 token_file = Path("~/.surepy.token").expanduser()
 old_token_file = token_file.with_suffix(".old_token")

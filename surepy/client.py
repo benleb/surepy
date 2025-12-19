@@ -21,7 +21,6 @@ from typing import Any
 from uuid import uuid1
 
 import aiohttp
-import async_timeout
 
 from .const import (
     ACCEPT,
@@ -124,7 +123,9 @@ class SureAPIClient:
             self._auth_token = token
         else:
             # no valid credentials/token
-            raise SurePetcareAuthenticationError("sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯")
+            raise SurePetcareAuthenticationError(
+                "sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯"
+            )
 
         # storage for received api data
         self.resources: dict[str, Any] = {}
@@ -156,9 +157,11 @@ class SureAPIClient:
 
     async def get_token(self) -> str | None:
         """Get or refresh the authentication token."""
-        authentication_data: dict[str, str | None] = dict(
-            email_address=self.email, password=self.password, device_id=self._device_id
-        )
+        authentication_data: dict[str, str | None] = {
+            "email_address": self.email,
+            "password": self.password,
+            "device_id": self._device_id,
+        }
 
         token: str | None = None
 
@@ -241,8 +244,12 @@ class SureAPIClient:
                 # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
 
             await session.options(resource, headers=headers)
-            response: aiohttp.ClientResponse = await session.request(
-                method, resource, headers=headers, json=data, timeout=self._api_timeout
+            response = await session.request(
+                method,
+                resource,
+                headers=headers,
+                json=data,
+                timeout=aiohttp.ClientTimeout(self._api_timeout),
             )
 
             if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
@@ -268,8 +275,7 @@ class SureAPIClient:
                 )
                 self._auth_token = None
                 if not second_try:
-                    token_refreshed = await self.get_token()
-                    if token_refreshed:
+                    if await self.get_token():
                         await self.call(method="GET", resource=resource, second_try=True)
 
                 raise SurePetcareAuthenticationError()
@@ -313,8 +319,7 @@ class SureAPIClient:
 
         response_data: list[dict[str, Any]] | None = []
 
-        response: dict[str, Any] | None = await self.call(method="GET", resource=resource)
-        if response:
+        if response := await self.call(method="GET", resource=resource):
             response_data = response.get("data")
 
         return response_data
@@ -420,6 +425,7 @@ class SureAPIClient:
 
         if response := await self.call(method="PUT", resource=resource):
             return response
+        return None
 
     async def _remove_tag_from_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
         """Removes the specified tag ID from the specified device ID"""
@@ -429,3 +435,4 @@ class SureAPIClient:
 
         if response := await self.call(method="DELETE", resource=resource):
             return response
+        return None

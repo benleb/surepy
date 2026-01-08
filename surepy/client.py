@@ -128,7 +128,7 @@ class SureAPIClient:
             self._auth_token = token
         else:
             # no valid credentials/token
-            raise SurePetcareAuthenticationError(
+            SurePetcareAuthenticationError(
                 "sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯"
             )
 

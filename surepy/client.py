@@ -398,13 +398,12 @@ class SureAPIClient:
         resource = CONTROL_RESOURCE.format(BASE_RESOURCE=BASE_RESOURCE, device_id=device_id)
 
         data = {
-            "curfew": [
+            "curfew":
                 {
                     "lock_time": lock_time.strftime("%H:%M"),
                     "unlock_time": unlock_time.strftime("%H:%M"),
                     "enabled": True,
                 }
-            ]
         }
 
         if (

@@ -15,6 +15,7 @@ from importlib.metadata import version
 from logging import Logger
 from math import ceil
 from typing import Any
+from urllib.parse import urlencode
 from uuid import uuid1
 
 import aiohttp
@@ -35,6 +36,7 @@ from surepy.entities import SurepyEntity
 from surepy.entities.devices import Feeder, Felaqua, Flap, Hub, SurepyDevice
 from surepy.entities.pet import Pet
 from surepy.enums import EntityType
+from surepy.exceptions import SurePetcareError
 
 
 __version__ = version(__name__)
@@ -241,6 +243,35 @@ class Surepy:
                 )
 
         return latest_drink
+
+    async def get_household_timeline_page(
+        self, household_id: int, *, before_id: int | None = None
+    ) -> list[dict[str, Any]]:
+        """Fetch up to 25 newest-first events, optionally before an event ID.
+
+        Event fields are returned unchanged, including unknown event types.
+        Transport errors and missing or malformed pages raise SurePetcareError.
+        """
+        params = {"page_size": 25}
+        if before_id is not None:
+            params["before_id"] = before_id
+        resource = f"{BASE_RESOURCE}/timeline/household/{household_id}?{urlencode(params)}"
+        try:
+            response = await self.sac.call(method="GET", resource=resource, raise_on_error=True)
+        except (ValueError, TypeError, AttributeError) as error:
+            # The HTTP client decodes and inspects the response before returning it.
+            raise SurePetcareError("Invalid household timeline response") from error
+        if response is None:
+            # The client returns None for HTTP 304 and retains the cached response.
+            response = self.sac.resources.get(resource)
+        if not isinstance(response, dict) or not isinstance(response.get("data"), list):
+            raise SurePetcareError("Missing or invalid household timeline page")
+        events = response["data"]
+        if len(events) > 25 or any(
+            not isinstance(event, dict) or type(event.get("id")) is not int for event in events
+        ):
+            raise SurePetcareError("Invalid household timeline events")
+        return events
 
     async def get_household_timeline(
         self, household_id: int | None = None, entries: int = 25

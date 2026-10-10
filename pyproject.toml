@@ -22,7 +22,7 @@ license = "MIT"
 name = "surepy"
 readme = "README.md"
 repository = "https://github.com/benleb/surepy"
-version = "0.9.0"
+version = "0.10.0"
 
 [tool.poetry.dependencies]
 python = "^3.14.2"

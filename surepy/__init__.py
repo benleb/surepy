@@ -350,10 +350,11 @@ class Surepy:
             for datapoint in datapoints:
                 if i < datapoint.get("bowl_count", 0):
                     change = datapoint["weights"][i]["change"]
-                    if app_mode and change <= -1:
+                    if app_mode:
                         # The app only counts food changes less than or equal to -1
                         # and rounds them to the nearest integer.
-                        total_food_change_in_grams[i] += round(abs(change))
+                        if change <= -1:
+                            total_food_change_in_grams[i] += round(abs(change))
                     elif change < 0:
                         # Only counting changes that are negative as these represent feedings.
                         # Positive changes are presumed to be refills.

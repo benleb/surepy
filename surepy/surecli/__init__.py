@@ -356,14 +356,14 @@ async def notification(ctx: click.Context, token: str | None = None) -> None:
 
             table = Table(box=box.MINIMAL)
 
-            all_keys: set[str] = set()
-            all_keys.update(*[entry.keys() for entry in data])
+            # ordered union of all keys, values are looked up per key so columns always match
+            all_keys: list[str] = list(dict.fromkeys(key for entry in data for key in entry))
 
             for key in all_keys:
                 table.add_column(str(key))
 
             for entry in data:
-                table.add_row(*([str(e) for e in entry.values()]))
+                table.add_row(*[str(entry.get(key, "")) for key in all_keys])
 
             console.print(table, "", sep="\n")
 

@@ -10,7 +10,7 @@ classifiers = [
   "Environment :: Console",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.14",
   "Development Status :: 4 - Beta",
   "Development Status :: 5 - Production/Stable",
 ]
@@ -25,23 +25,22 @@ repository = "https://github.com/benleb/surepy"
 version = "0.9.0"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-aiohttp = {extras = ["speedups"], version = "^3.7.4"}
-click = ">=8.0"
-requests = ">=2.24.0"
-rich = ">=10.1.0"
+python = "^3.14.2"
+aiohttp = {extras = ["speedups"], version = ">=3.14.4"}
+click = ">=8.1.8"
+rich = ">=14.2.0"
 
 [tool.poetry.group.dev.dependencies]
-bandit = "^1.8.6"
-black = "^25.9.0"
-coverage = {extras = ["toml"], version = "^7.10.7"}
-isort = "^6.1.0"
-mypy = "^1.18.2"
-pycodestyle = "^2.14.0"
-pylint = "^3.3.9"
-pytest = "^8.4.2"
-pytest-cov = "^7.0.0"
-pytest-asyncio = "^1.2.0"
+bandit = "^1.9.4"
+black = "^26.10.1"
+coverage = {extras = ["toml"], version = "^7.16.2"}
+isort = "^9.0.2"
+mypy = "^2.4.0"
+pycodestyle = "^2.15.0"
+pylint = "^4.1.2"
+pytest = "^9.1.1"
+pytest-cov = "^7.1.0"
+pytest-asyncio = "^1.4.0"
 
 [tool.poetry.scripts]
 surepy = 'surepy.surecli:cli'
@@ -62,7 +61,7 @@ load-plugins = [
 good-names = ["_", "id", "sp", "at"]
 
 [tool.pylint.TYPING]
-py-version = "3.9"
+py-version = "3.14"
 runtime-typing = false
 
 [tool.pylint.FORMAT]
@@ -100,7 +99,7 @@ exclude = '''
 '''
 include = '\.pyi?$'
 line-length = 100
-target_version = ["py39"]
+target_version = ["py314"]
 
 [tool.pytest.ini_options]
 addopts = "--cov --setup-show --code-highlight=yes --verbose"

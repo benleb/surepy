@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from http import HTTPStatus
 from http.client import HTTPException
 from logging import Logger
@@ -197,7 +197,7 @@ class SureAPIClient:
         except asyncio.TimeoutError as error:
             logger.debug("Timeout while calling %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareConnectionError() from error
-        except (aiohttp.ClientError, AttributeError) as error:
+        except (aiohttp.ClientError, AttributeError, ValueError) as error:
             logger.debug("Failed to fetch %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareError() from error
         finally:
@@ -298,9 +298,12 @@ class SureAPIClient:
                         response,
                     )
                     self._auth_token = None
-                    if not second_try:
-                        if await self.get_token():
-                            await self.call(method="GET", resource=resource, second_try=True)
+                    response.release()
+                    if not second_try and await self.get_token():
+                        # token expired, retry the very same request once with the new token
+                        return await self.call(
+                            method=method, resource=resource, data=data, second_try=True
+                        )
 
                     raise SurePetcareAuthenticationError()
 
@@ -330,7 +333,8 @@ class SureAPIClient:
 
                 return response_data
 
-        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
+        except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as error:
+            # ValueError: response body is not valid json
             logger.error("Can not load data from %s", resource)
             raise SurePetcareConnectionError() from error
         finally:
@@ -357,7 +361,7 @@ class SureAPIClient:
 
         data = {
             "where": int(location.value),
-            "since": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "since": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
         }
 
         if (response := await self.call(method="POST", resource=resource, data=data)) and (

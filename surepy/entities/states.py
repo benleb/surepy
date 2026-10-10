@@ -61,4 +61,4 @@ class FeedingState:
         self.at: datetime = datetime.fromisoformat(cast(str, state.get("at")))
         self.changes: list[float] | None = state["change"] if "change" in state else None
         self.change_bowl_one = self.changes[0] if self.changes else None
-        self.change_bowl_two = self.changes[1] if self.changes else None
+        self.change_bowl_two = self.changes[1] if self.changes and len(self.changes) > 1 else None

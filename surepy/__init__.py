@@ -177,7 +177,9 @@ class Surepy:
 
             pet_id = int(pair["pet_id"])
             device_id = int(pair["device_id"])
-            device: SurepyDevice = self.entities[device_id]  # type: ignore
+            if (device := self.entities.get(device_id)) is None:
+                # report for a device we do not know (e.g. an unsupported product)
+                continue
 
             latest_actions[pet_id] = {}
             latest_actions[pet_id] = self.entities[device_id].raw_data()
@@ -434,9 +436,19 @@ class Surepy:
 
         for entity in all_entities:
 
-            # key used by sure petcare in api response
-            entity_type = EntityType(int(entity.get("product_id", 0)))
             entity_id = entity["id"]
+
+            # key used by sure petcare in api response
+            try:
+                entity_type = EntityType(int(entity.get("product_id", 0)))
+            except ValueError:
+                logger.warning(
+                    "unsupported product: %s (%s): %s",
+                    entity.get("name", "-"),
+                    entity.get("product_id"),
+                    entity,
+                )
+                continue
 
             if entity_type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]:
                 surepy_entities[entity_id] = Flap(data=entity)
@@ -454,6 +466,7 @@ class Surepy:
                 logger.warning(
                     "unknown type: %s (%s): %s", entity.get("name", "-"), entity_type, entity
                 )
+                continue
 
             household_ids.add(surepy_entities[entity_id].household_id)
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from abc import ABC
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from surepy.enums import Location
 
@@ -36,7 +36,7 @@ class ActivityState:
     def __init__(self, state: dict[str, Any]):
         self.device_id = state.get("device_id")
         self.tag_id = state.get("tag_id")
-        self.since: datetime = (
+        self.since: datetime | None = (
             datetime.fromisoformat(state["at"]) if isinstance(state.get("at", None), str) else None
         )
         self.where: Location = Location(state["where"])
@@ -48,8 +48,8 @@ class DrinkingState:
     def __init__(self, state: dict[str, Any]):
         self.device_id = state.get("device_id")
         self.tag_id = state.get("tag_id")
-        self.at: datetime = datetime.fromisoformat(state.get("at"))
-        self.change: float = state["change"] if "change" in state else None
+        self.at: datetime = datetime.fromisoformat(cast(str, state.get("at")))
+        self.change: list[float] | None = state["change"] if "change" in state else None
 
 
 class FeedingState:
@@ -58,7 +58,7 @@ class FeedingState:
     def __init__(self, state: dict[str, Any]):
         self.device_id = state.get("device_id")
         self.tag_id = state.get("tag_id")
-        self.at: datetime = datetime.fromisoformat(state.get("at"))
-        self.changes: list[float] = state["change"] if "change" in state else None
+        self.at: datetime = datetime.fromisoformat(cast(str, state.get("at")))
+        self.changes: list[float] | None = state["change"] if "change" in state else None
         self.change_bowl_one = self.changes[0] if self.changes else None
         self.change_bowl_two = self.changes[1] if self.changes else None

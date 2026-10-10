@@ -46,7 +46,17 @@ pytest-asyncio = "^1.4.0"
 surepy = 'surepy.surecli:cli'
 
 [tool.pylint.MASTER]
-disable = ["missing-module-docstring", "missing-class-docstring", "missing-function-docstring"]
+disable = [
+  "missing-module-docstring",
+  "missing-class-docstring",
+  "missing-function-docstring",
+  # design heuristics, disabled like in home assistant; fixing them would change public signatures
+  "too-few-public-methods",
+  "too-many-arguments",
+  "too-many-branches",
+  "too-many-instance-attributes",
+  "too-many-positional-arguments",
+]
 ignore = ["tests", "const.py", "surecli"]
 
 # Use a conservative default here; 2 should speed up most setups and not hurt
@@ -74,7 +84,6 @@ combine_star = true
 force_grid_wrap = 0
 include_trailing_comma = true
 line_length = 100
-lines_after_imports = 2
 lines_between_types = 1
 multi_line_output = 3
 order_by_type = true

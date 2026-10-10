@@ -4,7 +4,7 @@ from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime
 from pprint import pformat
-from typing import Any
+from typing import Any, cast
 
 from surepy.enums import EntityType, Location
 
@@ -13,7 +13,7 @@ class SurepyEntity(ABC):
     def __init__(self, data: dict[str, Any]):
 
         # sure petcare id
-        self._id: int = int(data.get("id", data.get("_id")))
+        self._id: int = int(cast(int | str, data.get("id", data.get("_id"))))
 
         # self._sac: SureAPIClient = sac
         self._data = data

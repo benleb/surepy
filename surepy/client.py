@@ -17,7 +17,7 @@ from http.client import HTTPException
 from logging import Logger
 from os import environ
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 from uuid import uuid1
 
 import aiohttp
@@ -53,7 +53,6 @@ from .const import (
 )
 from .enums import Location, LockState
 from .exceptions import SurePetcareAuthenticationError, SurePetcareConnectionError, SurePetcareError
-
 
 TOKEN_ENV = "SUREPY_TOKEN"  # nosec
 TOKEN_FILE = Path("~/.surepy.token").expanduser()
@@ -127,10 +126,8 @@ class SureAPIClient:
         elif token := find_token():
             self._auth_token = token
         else:
-            # no valid credentials/token
-            SurePetcareAuthenticationError(
-                "sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯"
-            )
+            # no valid token (yet), one is requested with the credentials on the first api call
+            logger.debug("no valid token given or found, will log in with the credentials")
 
         # storage for received api data
         self.resources: dict[str, Any] = {}
@@ -207,6 +204,18 @@ class SureAPIClient:
             if not self._session:
                 await session.close()
 
+    @overload
+    async def call(
+        self,
+        method: Literal["GET", "PUT", "POST"],
+        resource: str,
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        second_try: bool = False,
+        **_: Any,
+    ) -> dict[str, Any] | None: ...
+
+    @overload
     async def call(
         self,
         method: str,
@@ -215,7 +224,17 @@ class SureAPIClient:
         json: dict[str, Any] | None = None,
         second_try: bool = False,
         **_: Any,
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any] | str | None: ...
+
+    async def call(
+        self,
+        method: str,
+        resource: str,
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        second_try: bool = False,
+        **_: Any,
+    ) -> dict[str, Any] | str | None:
         """Retrieve the flap data/state."""
 
         # logger.debug("")
@@ -257,7 +276,7 @@ class SureAPIClient:
                     json=data,
                 )
 
-                if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
+                if response.status in (HTTPStatus.OK, HTTPStatus.CREATED):
                     self.resources[resource] = response_data = await response.json()
 
                     if ETAG in response.headers:
@@ -306,7 +325,7 @@ class SureAPIClient:
                 )
 
                 if method == "DELETE" and response.status == HTTPStatus.NO_CONTENT:
-                    # TODO: this does not return any data, is there a better way?
+                    # the api answers without a body, return a truthy marker for the caller
                     return "DELETE 204 No Content"
 
                 return response_data
@@ -344,11 +363,8 @@ class SureAPIClient:
         if (response := await self.call(method="POST", resource=resource, data=data)) and (
             response_data := response.get("data")
         ):
-            desired_state = data.get("where")
-            state = response_data.get("where")
-
             # check if the state is correctly updated
-            if state == desired_state:
+            if response_data.get("where") == data.get("where"):
                 return response
 
         raise SurePetcareError(f"Setting position of {pet_id} failed!")
@@ -380,11 +396,8 @@ class SureAPIClient:
                 method="PUT", resource=resource, device_id=device_id, data=data
             )
         ) and (response_data := response.get("data")):
-            desired_state = data.get("locking")
-            state = response_data.get("locking")
-
             # check if the state is correctly updated
-            if state == desired_state:
+            if response_data.get("locking") == data.get("locking"):
                 return response
 
         # return None
@@ -412,11 +425,8 @@ class SureAPIClient:
                 method="PUT", resource=resource, device_id=device_id, json=data
             )
         ) and (response_data := response.get("data")):
-            desired_state = data.get("curfew")
-            state = response_data.get("curfew")
-
             # check if the state is correctly updated
-            if state == desired_state:
+            if response_data.get("curfew") == data.get("curfew"):
                 return response
 
         # return None
@@ -428,9 +438,7 @@ class SureAPIClient:
         """Set the profile for a tag on a device"""
         data = {"profile": profile}
 
-        if response := await self._add_tag_to_device(
-            device_id=device_id, tag_id=tag_id, data=data
-        ):
+        if response := await self._add_tag_to_device(device_id=device_id, tag_id=tag_id, data=data):
             return response
 
         raise SurePetcareError(f"ERROR SETTING PROFILE FOR TAG {tag_id} ON DEVICE {device_id}")
@@ -459,7 +467,9 @@ class SureAPIClient:
             return response
         return None
 
-    async def _remove_tag_from_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
+    async def _remove_tag_from_device(
+        self, device_id: int, tag_id: int
+    ) -> dict[str, Any] | str | None:
         """Removes the specified tag ID from the specified device ID"""
         resource = DEVICE_TAG_RESOURCE.format(
             BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id

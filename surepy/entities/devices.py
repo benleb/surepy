@@ -18,7 +18,6 @@ from surepy.const import SURE_BATT_VOLTAGE_FULL, SURE_BATT_VOLTAGE_LOW
 from surepy.entities import SurepyEntity
 from surepy.enums import BowlPosition, FoodType, LockState
 
-
 # get a logger
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -136,6 +135,7 @@ class Tag:
         """Initialize a Sure Petcare sensor."""
 
         self._data: dict[str, int | float | str] = data
+        self._feeder = feeder
 
     @property
     def id(self) -> int:
@@ -148,13 +148,13 @@ class Tag:
         return int(self._data["profile"])
 
     def version(self) -> str:
-        return self._data["version"]
+        return str(self._data["version"])
 
     def created_at(self) -> str:
         return str(self._data["created_at"])
 
     def updated_at(self) -> str:
-        return self._data["updated_at"]
+        return str(self._data["updated_at"])
 
     def raw_data(self) -> dict[str, int | float | str]:
         return self._data
@@ -181,7 +181,7 @@ class Feeder(SurepyDevice):
 
     @property
     def total_weight(self) -> float:
-        return sum([bowl.weight or 0.0 for bowl in self.bowls.values() if bowl.weight > 0.0])
+        return sum(bowl.weight or 0.0 for bowl in self.bowls.values() if bowl.weight > 0.0)
 
     def add_bowls(self) -> None:
         if lunch := self._data.get("lunch"):
@@ -208,7 +208,7 @@ class Felaqua(SurepyDevice):
 
         try:
             remaining = float(self._data["latest_drink"]["remaining"])
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             pass
 
         return remaining
@@ -219,7 +219,7 @@ class Felaqua(SurepyDevice):
 
         try:
             change = float(self._data["latest_drink"]["change"])
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             pass
 
         return change

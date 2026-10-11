@@ -10,7 +10,7 @@ classifiers = [
   "Environment :: Console",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.14",
   "Development Status :: 4 - Beta",
   "Development Status :: 5 - Production/Stable",
 ]
@@ -22,32 +22,41 @@ license = "MIT"
 name = "surepy"
 readme = "README.md"
 repository = "https://github.com/benleb/surepy"
-version = "0.9.0"
+version = "0.10.0"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-aiohttp = {extras = ["speedups"], version = "^3.7.4"}
-click = ">=8.0"
-requests = ">=2.24.0"
-rich = ">=10.1.0"
+python = "^3.14.2"
+aiohttp = {extras = ["speedups"], version = ">=3.14.4"}
+click = ">=8.1.8"
+rich = ">=14.2.0"
 
 [tool.poetry.group.dev.dependencies]
-bandit = "^1.8.6"
-black = "^25.9.0"
-coverage = {extras = ["toml"], version = "^7.10.7"}
-isort = "^6.1.0"
-mypy = "^1.18.2"
-pycodestyle = "^2.14.0"
-pylint = "^3.3.9"
-pytest = "^8.4.2"
-pytest-cov = "^7.0.0"
-pytest-asyncio = "^1.2.0"
+bandit = "^1.9.4"
+black = "^26.10.1"
+coverage = {extras = ["toml"], version = "^7.16.2"}
+isort = "^9.0.2"
+mypy = "^2.4.0"
+pycodestyle = "^2.15.0"
+pylint = "^4.1.2"
+pytest = "^9.1.1"
+pytest-cov = "^7.1.0"
+pytest-asyncio = "^1.4.0"
 
 [tool.poetry.scripts]
 surepy = 'surepy.surecli:cli'
 
 [tool.pylint.MASTER]
-disable = ["missing-module-docstring", "missing-class-docstring", "missing-function-docstring"]
+disable = [
+  "missing-module-docstring",
+  "missing-class-docstring",
+  "missing-function-docstring",
+  # design heuristics, disabled like in home assistant; fixing them would change public signatures
+  "too-few-public-methods",
+  "too-many-arguments",
+  "too-many-branches",
+  "too-many-instance-attributes",
+  "too-many-positional-arguments",
+]
 ignore = ["tests", "const.py", "surecli"]
 
 # Use a conservative default here; 2 should speed up most setups and not hurt
@@ -62,7 +71,7 @@ load-plugins = [
 good-names = ["_", "id", "sp", "at"]
 
 [tool.pylint.TYPING]
-py-version = "3.9"
+py-version = "3.14"
 runtime-typing = false
 
 [tool.pylint.FORMAT]
@@ -75,7 +84,6 @@ combine_star = true
 force_grid_wrap = 0
 include_trailing_comma = true
 line_length = 100
-lines_after_imports = 2
 lines_between_types = 1
 multi_line_output = 3
 order_by_type = true
@@ -100,7 +108,7 @@ exclude = '''
 '''
 include = '\.pyi?$'
 line-length = 100
-target_version = ["py39"]
+target_version = ["py314"]
 
 [tool.pytest.ini_options]
 addopts = "--cov --setup-show --code-highlight=yes --verbose"

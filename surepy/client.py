@@ -11,13 +11,13 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from http import HTTPStatus
 from http.client import HTTPException
 from logging import Logger
 from os import environ
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 from uuid import uuid1
 
 import aiohttp
@@ -53,7 +53,6 @@ from .const import (
 )
 from .enums import Location, LockState
 from .exceptions import SurePetcareAuthenticationError, SurePetcareConnectionError, SurePetcareError
-
 
 TOKEN_ENV = "SUREPY_TOKEN"  # nosec
 TOKEN_FILE = Path("~/.surepy.token").expanduser()
@@ -127,10 +126,8 @@ class SureAPIClient:
         elif token := find_token():
             self._auth_token = token
         else:
-            # no valid credentials/token
-            SurePetcareAuthenticationError(
-                "sorry 🐾 no valid credentials/token found ¯\\_(ツ)_/¯"
-            )
+            # no valid token (yet), one is requested with the credentials on the first api call
+            logger.debug("no valid token given or found, will log in with the credentials")
 
         # storage for received api data
         self.resources: dict[str, Any] = {}
@@ -200,12 +197,34 @@ class SureAPIClient:
         except asyncio.TimeoutError as error:
             logger.debug("Timeout while calling %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareConnectionError() from error
-        except (aiohttp.ClientError, AttributeError) as error:
+        except (aiohttp.ClientError, AttributeError, ValueError) as error:
             logger.debug("Failed to fetch %s: %s", AUTH_RESOURCE, error)
             raise SurePetcareError() from error
         finally:
             if not self._session:
                 await session.close()
+
+    @overload
+    async def call(
+        self,
+        method: Literal["GET", "PUT", "POST"],
+        resource: str,
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        second_try: bool = False,
+        **_: Any,
+    ) -> dict[str, Any] | None: ...
+
+    @overload
+    async def call(
+        self,
+        method: str,
+        resource: str,
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        second_try: bool = False,
+        **_: Any,
+    ) -> dict[str, Any] | str | None: ...
 
     async def call(
         self,
@@ -216,7 +235,7 @@ class SureAPIClient:
         second_try: bool = False,
         raise_on_error: bool = False,
         **_: Any,
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any] | str | None:
         """Retrieve the flap data/state."""
 
         # logger.debug("")
@@ -242,84 +261,87 @@ class SureAPIClient:
                 else aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self._api_timeout))
             )
 
-            headers = self._generate_headers()
+            async with asyncio.timeout(self._api_timeout):
+                headers = self._generate_headers()
 
-            # use etag if available
-            if resource in self._etags:
-                headers[ETAG] = str(self._etags.get(resource))
-                # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
+                # use etag if available
+                if resource in self._etags:
+                    headers[ETAG] = str(self._etags.get(resource))
+                    # logger.debug("🐾 \x1b[38;2;255;26;102m·\x1b[0m etag: %s", headers[ETAG])
 
-            await session.options(resource, headers=headers)
-            response = await session.request(
-                method,
-                resource,
-                headers=headers,
-                json=data,
-                timeout=aiohttp.ClientTimeout(self._api_timeout),
-            )
-
-            if response.status == HTTPStatus.OK or response.status == HTTPStatus.CREATED:
-                self.resources[resource] = response_data = await response.json()
-
-                if ETAG in response.headers:
-                    self._etags[resource] = response.headers[ETAG].strip('"')
-
-            elif response.status == HTTPStatus.NOT_MODIFIED:
-                # Etag header matched, no new data available
-                logger.debug(
-                    "🐾 \x1b[38;2;0;255;0m·\x1b[0m %d: etag matched - no new data available",
-                    response.status,
-                )
-
-            elif response.status == HTTPStatus.UNAUTHORIZED:
-                logger.error(
-                    "🐾 \x1b[38;2;255;26;102m·\x1b[0m %s %s: %d | %s",
+                await session.options(resource, headers=headers)
+                response = await session.request(
                     method,
-                    resource.replace("https://", ""),
-                    response.status,
-                    response,
+                    resource,
+                    headers=headers,
+                    json=data,
                 )
-                self._auth_token = None
-                if not second_try:
-                    if await self.get_token():
-                        await self.call(
-                            method="GET",
+
+                if response.status in (HTTPStatus.OK, HTTPStatus.CREATED):
+                    self.resources[resource] = response_data = await response.json()
+
+                    if ETAG in response.headers:
+                        self._etags[resource] = response.headers[ETAG].strip('"')
+
+                elif response.status == HTTPStatus.NOT_MODIFIED:
+                    # Etag header matched, no new data available
+                    logger.debug(
+                        "🐾 \x1b[38;2;0;255;0m·\x1b[0m %d: etag matched - no new data available",
+                        response.status,
+                    )
+
+                elif response.status == HTTPStatus.UNAUTHORIZED:
+                    logger.error(
+                        "🐾 \x1b[38;2;255;26;102m·\x1b[0m %s %s: %d | %s",
+                        method,
+                        resource.replace("https://", ""),
+                        response.status,
+                        response,
+                    )
+                    self._auth_token = None
+                    response.release()
+                    if not second_try and await self.get_token():
+                        # token expired, retry the very same request once with the new token
+                        return await self.call(
+                            method=method,
                             resource=resource,
+                            data=data,
                             second_try=True,
                             raise_on_error=raise_on_error,
                         )
 
-                raise SurePetcareAuthenticationError()
+                    raise SurePetcareAuthenticationError()
 
-            else:
-                logger.info(
-                    "🐾 \x1b[38;2;255;0;255m·\x1b[0m %s %s: %d | %s",
+                else:
+                    logger.info(
+                        "🐾 \x1b[38;2;255;0;255m·\x1b[0m %s %s: %d | %s",
+                        method,
+                        resource.replace("https://", ""),
+                        response.status,
+                        response,
+                    )
+                    if raise_on_error:
+                        raise SurePetcareError(f"Unexpected HTTP status: {response.status}")
+
+                if response_data:
+                    responselen = len(response_data.get("data", []))
+                else:
+                    responselen = 0
+                logger.debug(
+                    "🐾 \x1b[38;2;0;255;0m·\x1b[0m %s %s | %d",
                     method,
                     resource.replace("https://", ""),
-                    response.status,
-                    response,
+                    responselen,
                 )
-                if raise_on_error:
-                    raise SurePetcareError(f"Unexpected HTTP status: {response.status}")
 
-            if response_data:
-                responselen = len(response_data.get("data", []))
-            else:
-                responselen = 0
-            logger.debug(
-                "🐾 \x1b[38;2;0;255;0m·\x1b[0m %s %s | %d",
-                method,
-                resource.replace("https://", ""),
-                responselen,
-            )
+                if method == "DELETE" and response.status == HTTPStatus.NO_CONTENT:
+                    # the api answers without a body, return a truthy marker for the caller
+                    return "DELETE 204 No Content"
 
-            if method == "DELETE" and response.status == HTTPStatus.NO_CONTENT:
-                # TODO: this does not return any data, is there a better way?
-                return "DELETE 204 No Content"
+                return response_data
 
-            return response_data
-
-        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
+        except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as error:
+            # ValueError: response body is not valid json
             logger.error("Can not load data from %s", resource)
             raise SurePetcareConnectionError() from error
         finally:
@@ -346,17 +368,14 @@ class SureAPIClient:
 
         data = {
             "where": int(location.value),
-            "since": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "since": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
         }
 
         if (response := await self.call(method="POST", resource=resource, data=data)) and (
             response_data := response.get("data")
         ):
-            desired_state = data.get("where")
-            state = response_data.get("where")
-
             # check if the state is correctly updated
-            if state == desired_state:
+            if response_data.get("where") == data.get("where"):
                 return response
 
         raise SurePetcareError(f"Setting position of {pet_id} failed!")
@@ -388,11 +407,8 @@ class SureAPIClient:
                 method="PUT", resource=resource, device_id=device_id, data=data
             )
         ) and (response_data := response.get("data")):
-            desired_state = data.get("locking")
-            state = response_data.get("locking")
-
             # check if the state is correctly updated
-            if state == desired_state:
+            if response_data.get("locking") == data.get("locking"):
                 return response
 
         # return None
@@ -420,11 +436,8 @@ class SureAPIClient:
                 method="PUT", resource=resource, device_id=device_id, json=data
             )
         ) and (response_data := response.get("data")):
-            desired_state = data.get("curfew")
-            state = response_data.get("curfew")
-
             # check if the state is correctly updated
-            if state == desired_state:
+            if response_data.get("curfew") == data.get("curfew"):
                 return response
 
         # return None
@@ -436,9 +449,7 @@ class SureAPIClient:
         """Set the profile for a tag on a device"""
         data = {"profile": profile}
 
-        if response := await self._add_tag_to_device(
-            device_id=device_id, tag_id=tag_id, data=data
-        ):
+        if response := await self._add_tag_to_device(device_id=device_id, tag_id=tag_id, data=data):
             return response
 
         raise SurePetcareError(f"ERROR SETTING PROFILE FOR TAG {tag_id} ON DEVICE {device_id}")
@@ -467,7 +478,9 @@ class SureAPIClient:
             return response
         return None
 
-    async def _remove_tag_from_device(self, device_id: int, tag_id: int) -> dict[str, Any] | None:
+    async def _remove_tag_from_device(
+        self, device_id: int, tag_id: int
+    ) -> dict[str, Any] | str | None:
         """Removes the specified tag ID from the specified device ID"""
         resource = DEVICE_TAG_RESOURCE.format(
             BASE_RESOURCE=BASE_RESOURCE, device_id=device_id, tag_id=tag_id

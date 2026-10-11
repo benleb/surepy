@@ -25,12 +25,10 @@ from rich import box
 from rich.table import Table
 
 from surepy import Surepy, __name__ as sp_name, __version__ as sp_version, console, natural_time
-from surepy.entities.devices import Flap, SurepyDevice, Feeder
+from surepy.client import TOKEN_ENV
+from surepy.entities.devices import Feeder, Flap, SurepyDevice
 from surepy.entities.pet import Pet
 from surepy.enums import Location, LockState
-
-
-TOKEN_ENV = "SUREPY_TOKEN"
 
 
 def coro(f: Any) -> Any:
@@ -358,14 +356,14 @@ async def notification(ctx: click.Context, token: str | None = None) -> None:
 
             table = Table(box=box.MINIMAL)
 
-            all_keys: set[str] = set()
-            all_keys.update(*[entry.keys() for entry in data])
+            # ordered union of all keys, values are looked up per key so columns always match
+            all_keys: list[str] = list(dict.fromkeys(key for entry in data for key in entry))
 
             for key in all_keys:
                 table.add_column(str(key))
 
             for entry in data:
-                table.add_row(*([str(e) for e in entry.values()]))
+                table.add_row(*[str(entry.get(key, "")) for key in all_keys])
 
             console.print(table, "", sep="\n")
 
@@ -393,7 +391,7 @@ async def locking(ctx: click.Context, device_id: int, mode: str, token: str | No
 
     sp = Surepy(auth_token=str(token))
 
-    if (flap := await sp.get_device(device_id=device_id)) and (type(flap) == Flap):
+    if (flap := await sp.get_device(device_id=device_id)) and (type(flap) is Flap):
 
         flap = cast(Flap, flap)
 
@@ -456,7 +454,7 @@ async def curfew(
 
     sp = Surepy(auth_token=token)
 
-    if (flap := await sp.get_device(device_id=device_id)) and (type(flap) == Flap):
+    if (flap := await sp.get_device(device_id=device_id)) and (type(flap) is Flap):
 
         flap = cast(Flap, flap)
 
@@ -468,12 +466,13 @@ async def curfew(
             device_id=device_id, lock_time=lock_time, unlock_time=unlock_time
         ) and (device := await sp.get_device(device_id=device_id)):
             console.print(
-                f"✅ {device.name} curfew lock_time={str(lock_time)} unlock_time={str(unlock_time)} 🐾"
+                f"✅ {device.name} curfew "
+                f"lock_time={str(lock_time)} unlock_time={str(unlock_time)} 🐾"
             )
         else:
             console.print(
-                f"❌ setting curfew lock_time={str(lock_time)} unlock_time={str(unlock_time)} may have worked but "
-                f"something is fishy..!"
+                f"❌ setting curfew lock_time={str(lock_time)} unlock_time={str(unlock_time)} "
+                f"may have worked but something is fishy..!"
             )
 
 
@@ -502,7 +501,7 @@ async def position(
     pet: Pet | None
     location: Location | None
 
-    if (pet := await sp.get_pet(pet_id=pet_id)) and (type(pet) == Pet):
+    if (pet := await sp.get_pet(pet_id=pet_id)) and (type(pet) is Pet):
 
         if position == "in":
             location = Location.INSIDE
@@ -552,7 +551,7 @@ async def feederassign(
 
     sp = Surepy(auth_token=str(token))
 
-    if (feeder := await sp.get_device(device_id=device_id)) and (type(feeder) == Feeder):
+    if (feeder := await sp.get_device(device_id=device_id)) and (type(feeder) is Feeder):
 
         pets: list[Pet] = await sp.get_pets()
 
@@ -573,6 +572,9 @@ async def feederassign(
         if mode == "add":
             for pet in pets:
                 if pet.id == pet_id:
+                    if pet.tag_id is None:
+                        console.print(f"{pet.name} has no tag that could be assigned.")
+                        return
                     for tag in feeder.tags.values():
                         if tag.id == pet.tag_id:
                             console.print(f"Pet is already assigned to this feeder.")

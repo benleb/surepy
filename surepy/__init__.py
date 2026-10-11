@@ -38,7 +38,6 @@ from surepy.entities.pet import Pet
 from surepy.enums import EntityType
 from surepy.exceptions import SurePetcareError
 
-
 __version__ = version(__name__)
 
 # TOKEN_ENV = "SUREPY_TOKEN"  # nosec
@@ -180,10 +179,12 @@ class Surepy:
 
             pet_id = int(pair["pet_id"])
             device_id = int(pair["device_id"])
-            device: SurepyDevice = self.entities[device_id]  # type: ignore
+            if (device := self.entities.get(device_id)) is None:
+                # report for a device we do not know (e.g. an unsupported product)
+                continue
 
             latest_actions[pet_id] = {}
-            latest_actions[pet_id] = self.entities[device_id]._data
+            latest_actions[pet_id] = self.entities[device_id].raw_data()
 
             # movement
             if (
@@ -192,7 +193,9 @@ class Surepy:
             ):
                 latest_datapoint = pair["movement"]["datapoints"].pop()
                 # latest_actions[pet_id]["move"] = latest_datapoint
-                latest_actions[pet_id] = self.entities[device_id]._data["move"] = latest_datapoint
+                latest_actions[pet_id] = self.entities[device_id].raw_data()["move"] = (
+                    latest_datapoint
+                )
 
             # feeding
             elif (
@@ -201,13 +204,17 @@ class Surepy:
             ):
                 latest_datapoint = pair["feeding"]["datapoints"].pop()
                 # latest_actions[pet_id]["lunch"] = latest_datapoint
-                latest_actions[pet_id] = self.entities[device_id]._data["lunch"] = latest_datapoint
+                latest_actions[pet_id] = self.entities[device_id].raw_data()["lunch"] = (
+                    latest_datapoint
+                )
 
             # drinking
             elif device.type == EntityType.FELAQUA and pair["drinking"]["datapoints"]:
                 latest_datapoint = pair["drinking"]["datapoints"].pop()
                 # latest_actions[pet_id]["drink"] = latest_datapoint
-                latest_actions[pet_id] = self.entities[device_id]._data["drink"] = latest_datapoint
+                latest_actions[pet_id] = self.entities[device_id].raw_data()["drink"] = (
+                    latest_datapoint
+                )
 
         return latest_actions
 
@@ -233,9 +240,9 @@ class Surepy:
                 updated_at = latest_entry_frame["updated_at"]
                 latest_drink = {"remaining": remaining, "change": change, "date": updated_at}
 
-                self.entities[device_id]._data["latest_drink"] = latest_drink
+                self.entities[device_id].raw_data()["latest_drink"] = latest_drink
 
-            except (KeyError, TypeError, IndexError):
+            except KeyError, TypeError, IndexError:
                 logger.warning(
                     "no water remaining/change events found in household timeline "
                     "(checked last %s entries)",
@@ -324,54 +331,69 @@ class Surepy:
             )
         ) or {}
 
-    async def get_pet_aggregate_report(self, household_id: int, pet_id: int, from_date: str | None = None,  to_date: str | None = None) -> dict[str, Any]:
+    async def get_pet_aggregate_report(
+        self,
+        household_id: int,
+        pet_id: int,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> dict[str, Any]:
         """
         Retrieve the pet aggregate report.
         from_date and to_date should be in format: YYYY-MM-DD
-        CAUTION: not supplying a from_date and to_date could result in responses that are 1 MB or more with 500+ datapoints.
+        CAUTION: not supplying a from_date and to_date could result in responses that are
+        1 MB or more with 500+ datapoints.
         """
-        return (
-            await self.sac.call(
-                method="GET",
-                resource=f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}/aggregate?from={from_date}&to={to_date}",
-            )
-            if from_date and to_date
-            else await self.sac.call(
-                method="GET",
-                resource=f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}/aggregate",
-            )
-        ) or {}
+        resource = f"{BASE_RESOURCE}/report/household/{household_id}/pet/{pet_id}/aggregate"
+        if from_date and to_date:
+            resource += f"?from={from_date}&to={to_date}"
 
-    async def get_pet_food_consumption_report(self, household_id: int, pet_id: int, from_date: str, to_date: str, bowl_index: int | None = 0, app_mode: bool = True) -> int | float | list[int]:
+        return await self.sac.call(method="GET", resource=resource) or {}
+
+    async def get_pet_food_consumption_report(
+        self,
+        household_id: int,
+        pet_id: int,
+        from_date: str,
+        to_date: str,
+        bowl_index: int | None = 0,
+        app_mode: bool = True,
+    ) -> int | float | list[int | float]:
         """
         Retrieve the dry food consumed in grams per pet in given time range.
         from_date and to_date should be in format: YYYY-MM-DD
-            If you only want food consumption per day just pass in the same day twice (e.g. "2024-01-01" and "2024-01-01")
+            If you only want food consumption per day just pass in the same day twice
+            (e.g. "2024-01-01" and "2024-01-01")
         app_mode will add up food consumption how the app does it.
-           Turning app_mode off may give more accurate results, but the results won't match the app.
-        bowl_index can be 0, 1 or None. If you only have one bowl the index is 0. Pass None to return a list with the consumption of each bowl.
+            Turning app_mode off may give more accurate results, but the results won't match
+            the app.
+        bowl_index can be 0, 1 or None. If you only have one bowl the index is 0.
+            Pass None to return a list with the consumption of each bowl.
         """
         report = await self.get_pet_aggregate_report(household_id, pet_id, from_date, to_date)
-        datapoints = report.get('data').get('feeding').get('datapoints')
-        total_food_change_in_grams = [0, 0]
-        if bowl_index is None:
-            bowl_index = [0, 1]
-        else:
-            bowl_index = [bowl_index]
-        for i in bowl_index:
+        feeding: dict[str, Any] = (report.get("data") or {}).get("feeding") or {}
+        datapoints: list[dict[str, Any]] = feeding.get("datapoints") or []
+
+        bowl_indices = [0, 1] if bowl_index is None else [bowl_index]
+        total_food_change_in_grams: list[int | float] = [0, 0]
+
+        for i in bowl_indices:
             for datapoint in datapoints:
-                if i < datapoint.get('bowl_count'):
-                    change = datapoint.get('weights')[i].get('change')
-                    if app_mode and change <= -1:
-                        # The app only counts food changes less than or equal to -1 and rounds to nearest integer.
-                        total_food_change_in_grams[i] += round(abs(change))
+                if i < datapoint.get("bowl_count", 0):
+                    change = datapoint["weights"][i]["change"]
+                    if app_mode:
+                        # The app only counts food changes less than or equal to -1
+                        # and rounds them to the nearest integer.
+                        if change <= -1:
+                            total_food_change_in_grams[i] += round(abs(change))
                     elif change < 0:
-                        # Only counting changes that are negative as these represent feedings. Positive changes are presumed to be refills.
+                        # Only counting changes that are negative as these represent feedings.
+                        # Positive changes are presumed to be refills.
                         total_food_change_in_grams[i] += abs(change)
-        if len(bowl_index) == 1:
-            return total_food_change_in_grams[bowl_index[0]]
-        else:
-            return total_food_change_in_grams
+
+        if len(bowl_indices) == 1:
+            return total_food_change_in_grams[bowl_indices[0]]
+        return total_food_change_in_grams
 
     async def get_pet(self, pet_id: int) -> Pet | None:
         if pet_id not in self.entities:
@@ -403,7 +425,7 @@ class Surepy:
         # fetch additional data from sure petcare
         attributes: dict[str, Any] | None = None
 
-        if (raw_data := (await self.sac.call(method="GET", resource=ATTR_RESOURCE))) and (
+        if (raw_data := await self.sac.call(method="GET", resource=ATTR_RESOURCE)) and (
             attributes := raw_data.get("data")
         ):
 
@@ -446,9 +468,19 @@ class Surepy:
 
         for entity in all_entities:
 
-            # key used by sure petcare in api response
-            entity_type = EntityType(int(entity.get("product_id", 0)))
             entity_id = entity["id"]
+
+            # key used by sure petcare in api response
+            try:
+                entity_type = EntityType(int(entity.get("product_id", 0)))
+            except ValueError:
+                logger.warning(
+                    "unsupported product: %s (%s): %s",
+                    entity.get("name", "-"),
+                    entity.get("product_id"),
+                    entity,
+                )
+                continue
 
             if entity_type in [EntityType.CAT_FLAP, EntityType.PET_FLAP]:
                 surepy_entities[entity_id] = Flap(data=entity)
@@ -466,6 +498,7 @@ class Surepy:
                 logger.warning(
                     "unknown type: %s (%s): %s", entity.get("name", "-"), entity_type, entity
                 )
+                continue
 
             household_ids.add(surepy_entities[entity_id].household_id)
 

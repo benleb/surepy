@@ -50,6 +50,42 @@ async def test_http_cache_and_errors(client: Surepy, status: int) -> None:
 
 
 @pytest.mark.asyncio
+async def test_http_retry_preserves_request_and_timeline_errors(client: Surepy) -> None:
+    resource = f"{BASE_RESOURCE}/timeline/household/42?page_size=25"
+
+    async def refresh_token() -> str:
+        client.sac._auth_token = "refreshed-token"
+        return "refreshed-token"
+
+    client.sac.get_token = AsyncMock(side_effect=refresh_token)
+    client.sac._session.options = AsyncMock()
+
+    data = {"marker": "preserve"}
+    client.sac._session.request = AsyncMock(
+        side_effect=[MagicMock(status=401), MagicMock(status=500)]
+    )
+    with pytest.raises(SurePetcareError, match="Unexpected HTTP status: 500"):
+        await client.sac.call(method="POST", resource=resource, data=data, raise_on_error=True)
+
+    assert [
+        (call.args[0], call.args[1], call.kwargs["json"])
+        for call in client.sac._session.request.await_args_list
+    ] == [("POST", resource, data), ("POST", resource, data)]
+
+    client.sac.resources[resource] = {"data": [{"id": 1}]}
+    client.sac._session.request = AsyncMock(
+        side_effect=[MagicMock(status=401), MagicMock(status=500)]
+    )
+    with pytest.raises(SurePetcareError, match="Unexpected HTTP status: 500"):
+        await client.get_household_timeline_page(42)
+
+    assert [
+        (call.args[0], call.args[1], call.kwargs["json"])
+        for call in client.sac._session.request.await_args_list
+    ] == [("GET", resource, None), ("GET", resource, None)]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("response", [None, {}, {"data": None}, {"data": [{}]}])
 async def test_invalid_page_raises(client: Surepy, response: dict | None) -> None:
     client.sac.call = AsyncMock(return_value=response)

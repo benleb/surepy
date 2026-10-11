@@ -233,6 +233,7 @@ class SureAPIClient:
         data: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         second_try: bool = False,
+        raise_on_error: bool = False,
         **_: Any,
     ) -> dict[str, Any] | str | None:
         """Retrieve the flap data/state."""
@@ -302,7 +303,11 @@ class SureAPIClient:
                     if not second_try and await self.get_token():
                         # token expired, retry the very same request once with the new token
                         return await self.call(
-                            method=method, resource=resource, data=data, second_try=True
+                            method=method,
+                            resource=resource,
+                            data=data,
+                            second_try=True,
+                            raise_on_error=raise_on_error,
                         )
 
                     raise SurePetcareAuthenticationError()
@@ -315,6 +320,8 @@ class SureAPIClient:
                         response.status,
                         response,
                     )
+                    if raise_on_error:
+                        raise SurePetcareError(f"Unexpected HTTP status: {response.status}")
 
                 if response_data:
                     responselen = len(response_data.get("data", []))

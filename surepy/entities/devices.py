@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 
 from abc import ABC
+from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
@@ -43,9 +44,42 @@ class Hub(SurepyEntity):
         """Picture of the Pet."""
         return urlparse("https://surehub.io/assets/images/hub-icon.svg").geturl()
 
+    @property
+    def led_mode(self) -> int | None:
+        """LED brightness mode of the hub."""
+        mode = (self._data.get("status") or {}).get("led_mode")
+        return int(mode) if mode is not None else None
+
+    @property
+    def pairing_mode(self) -> bool:
+        """True while the hub is pairing new devices."""
+        return bool((self._data.get("status") or {}).get("pairing_mode"))
+
 
 class SurepyDevice(SurepyEntity, ABC):
     """Abstract Surepy base device"""
+
+    def __init__(self, data: dict[str, Any]):
+        super().__init__(data)
+
+        self.tags: dict[int, Tag] = {}
+
+        self.add_tags()
+
+    def add_tags(self) -> None:
+        if tags := self._data.get("tags"):
+            for tag in tags:
+                self.tags[tag["index"]] = Tag(data=tag, device=self)
+
+    @property
+    def _control(self) -> dict[str, Any]:
+        return self._data.get("control") or {}
+
+    @property
+    def learn_mode(self) -> bool | None:
+        """True while the device is learning a new pet microchip."""
+        status = self._data.get("status") or {}
+        return bool(status["learn_mode"]) if "learn_mode" in status else None
 
     @property
     def parent_id(self) -> int | None:
@@ -129,13 +163,13 @@ class FeederBowl:
 
 
 class Tag:
-    """Tags assigned to a device."""
+    """Pet microchip tag assigned to a device."""
 
-    def __init__(self, data: dict[str, int | float | str], feeder: Feeder):
+    def __init__(self, data: dict[str, int | float | str], device: SurepyDevice):
         """Initialize a Sure Petcare sensor."""
 
         self._data: dict[str, int | float | str] = data
-        self._feeder = feeder
+        self._device = device
 
     @property
     def id(self) -> int:
@@ -171,10 +205,6 @@ class Feeder(SurepyDevice):
 
         self.add_bowls()
 
-        self.tags: dict[int, Tag] = {}
-
-        self.add_tags()
-
     @property
     def bowl_count(self) -> int:
         return len(self.bowls)
@@ -193,10 +223,17 @@ class Feeder(SurepyDevice):
         """Icon of the Felaqua."""
         return urlparse("https://surehub.io/assets/images/feeder-left-menu.png").geturl()
 
-    def add_tags(self) -> None:
-        if tags := self._data.get("tags"):
-            for tag in tags:
-                self.tags[tag["index"]] = Tag(data=tag, feeder=self)
+    @property
+    def training_mode(self) -> int | None:
+        """Lid training step: 0 is off, 1 to 4 are the training steps."""
+        mode = self._control.get("training_mode")
+        return int(mode) if mode is not None else None
+
+    @property
+    def lid_close_delay(self) -> int | None:
+        """Seconds the lid stays open after the pet leaves."""
+        delay = (self._control.get("lid") or {}).get("close_delay")
+        return int(delay) if delay is not None else None
 
 
 class Felaqua(SurepyDevice):
@@ -230,8 +267,47 @@ class Felaqua(SurepyDevice):
         return urlparse("https://surehub.io/assets/images/poseidon-left-menu.png").geturl()
 
 
+@dataclass
+class Curfew:
+    """A curfew window, times in the household's timezone."""
+
+    enabled: bool
+    lock_time: str | None
+    unlock_time: str | None
+
+
 class Flap(SurepyDevice):
     """Sure Petcare Cat- or Pet-Flap."""
+
+    @property
+    def curfew(self) -> list[Curfew]:
+        """Configured curfews; the API returns a single dict or a list of them."""
+        raw = self._control.get("curfew") or []
+        entries = [raw] if isinstance(raw, dict) else raw
+        return [
+            Curfew(
+                enabled=bool(entry.get("enabled", False)),
+                lock_time=entry.get("lock_time"),
+                unlock_time=entry.get("unlock_time"),
+            )
+            for entry in entries
+        ]
+
+    @property
+    def fail_safe(self) -> int | None:
+        """Fail-safe mode as configured in the app."""
+        mode = self._control.get("fail_safe")
+        return int(mode) if mode is not None else None
+
+    @property
+    def non_selective_entry(self) -> bool:
+        """True if any animal may enter, not only registered pets."""
+        return bool(self._control.get("non_selective_entry"))
+
+    @property
+    def non_selective_exit(self) -> bool:
+        """True if any animal may exit, not only registered pets."""
+        return bool(self._control.get("non_selective_exit"))
 
     @property
     def state(self) -> LockState:

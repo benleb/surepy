@@ -60,12 +60,14 @@ class SurepyEntity(ABC):
 class StateFeeding:
     change: list[float]
     at: datetime | None
+    device_id: int | None = None
 
 
 @dataclass
 class StateDrinking:
     change: list[float]
     at: datetime | None
+    device_id: int | None = None
 
 
 @dataclass

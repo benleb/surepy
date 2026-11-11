@@ -111,6 +111,7 @@ class Pet(SurepyEntity):
             return StateFeeding(
                 change=activity.get("change", [0.0, 0.0]),
                 at=datetime.fromisoformat(activity.get("at", None)),
+                device_id=activity.get("device_id"),
             )
 
         return None
@@ -122,6 +123,7 @@ class Pet(SurepyEntity):
             return StateDrinking(
                 change=activity.get("change", [0.0]),
                 at=datetime.fromisoformat(activity.get("at", None)),
+                device_id=activity.get("device_id"),
             )
 
         return None

@@ -136,6 +136,11 @@ class SureAPIClient:
 
         logger.debug("initialization completed | vars(): %s", vars())
 
+    @property
+    def auth_token(self) -> str | None:
+        """Current authentication token, including one refreshed after a 401."""
+        return self._auth_token
+
     def _generate_headers(self) -> dict[str, str]:
         """Build a HTTP header accepted by the API"""
         user_agent = (
@@ -290,7 +295,10 @@ class SureAPIClient:
                     )
 
                 elif response.status == HTTPStatus.UNAUTHORIZED:
-                    logger.error(
+                    # an expired token is expected and recovered from below, only a
+                    # 401 with the freshly requested token is an actual error
+                    logger.log(
+                        logging.ERROR if second_try else logging.INFO,
                         "🐾 \x1b[38;2;255;26;102m·\x1b[0m %s %s: %d | %s",
                         method,
                         resource.replace("https://", ""),

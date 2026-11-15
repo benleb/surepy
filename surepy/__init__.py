@@ -107,13 +107,6 @@ class Surepy:
             surepy_version=__version__,
         )
 
-        # api token management
-        self._auth_token: str | None = None
-        if auth_token and token_seems_valid(auth_token):
-            self._auth_token = auth_token
-        else:  # if token := find_token():
-            self._auth_token = find_token()
-
         self.entities: dict[int, SurepyEntity] = {}
         self._pets: dict[int, Any] = {}
         self._flaps: dict[int, Any] = {}
@@ -133,8 +126,8 @@ class Surepy:
 
     @property
     def auth_token(self) -> str | None:
-        """Authentication token for device"""
-        return self._auth_token
+        """Authentication token currently used by the API client"""
+        return self.sac.auth_token
 
     async def pets_details(self) -> list[dict[str, Any]] | None:
         """Fetch pet information."""
